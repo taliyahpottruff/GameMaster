@@ -1,25 +1,38 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
 using System.Configuration;
-using DSharpPlus;
+using Discord;
+using Discord.WebSocket;
+using GameMaster;
+using Microsoft.Extensions.DependencyInjection;
 
-var discord = new DiscordClient(new DiscordConfiguration()
+/*var builder = new ServiceCollection();
+builder.AddSingleton<DataService>();
+builder.BuildServiceProvider();*/
+
+var dataService = new DataService();
+var client = new DiscordSocketClient(new DiscordSocketConfig()
 {
-	Token = ConfigurationManager.AppSettings["DiscordToken"] ?? string.Empty,
-	TokenType = TokenType.Bot,
-	Intents = DiscordIntents.All
+	GatewayIntents = GatewayIntents.All
 });
 
-discord.MessageCreated += async (sender, e) =>
-{
-	if (e.Author.IsBot)
-		return;
+client.Log += Log;
 
-	if (e.Message.Content.ToLower().StartsWith("ping"))
-	{
-		await e.Message.RespondAsync("Pong");
-	}
-};
+var token = ConfigurationManager.AppSettings["DiscordToken"];
 
-await discord.ConnectAsync();
+await client.LoginAsync(TokenType.Bot, token);
+await client.StartAsync();
+
+var mafiaCommands = new MafiaCommands(client, dataService);
+
+client.SlashCommandExecuted += mafiaCommands.SlashCommandHandler;
+client.MessageReceived += mafiaCommands.HandleMessages;
+
+// Block this task until the program is closed.
 await Task.Delay(-1);
+
+Task Log(LogMessage msg)
+{
+	Console.WriteLine(msg.ToString());
+	return Task.CompletedTask;
+}
