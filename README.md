@@ -12,3 +12,6 @@ Any and all private tokens and URIs must be in `./GameMaster/app.config`. Use th
     </appSettings>
 </configuration>
 ```
+
+## Contributing
+Contributions are welcome. Please check the Issues page for a list of features and bugs that need work. For new features, be sure to branch off of the `dev` branch.
