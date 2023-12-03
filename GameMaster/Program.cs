@@ -27,6 +27,7 @@ var mafiaCommands = new MafiaCommands(client, dataService);
 
 client.SlashCommandExecuted += mafiaCommands.SlashCommandHandler;
 client.MessageReceived += mafiaCommands.HandleMessages;
+client.Ready += async () => await mafiaCommands.RegisterCommands();
 
 // Block this task until the program is closed.
 await Task.Delay(-1);

@@ -18,8 +18,20 @@ public class MafiaCommands
 	public async Task RegisterCommands()
 	{
 		await _client.CreateGlobalApplicationCommandAsync(new SlashCommandBuilder()
-			.WithName("test")
-			.WithDescription("Testing command")
+			.WithName("startvote")
+			.WithDescription("Start a vote in this channel")
+			.Build());
+		await _client.CreateGlobalApplicationCommandAsync(new SlashCommandBuilder()
+			.WithName("stopvote")
+			.WithDescription("Ends voting in this channel")
+			.Build());
+		await _client.CreateGlobalApplicationCommandAsync(new SlashCommandBuilder()
+			.WithName("resetvote")
+			.WithDescription("Wipe all votes")
+			.Build());
+		await _client.CreateGlobalApplicationCommandAsync(new SlashCommandBuilder()
+			.WithName("tally")
+			.WithDescription("Get the current vote tally")
 			.Build());
 	}
 
@@ -29,6 +41,15 @@ public class MafiaCommands
 		{
 			case "startvote":
 				await StartCount(command);
+				break;
+			case "stopvote":
+				await StopCount(command);
+				break;
+			case "resetvote":
+				await ResetCount(command);
+				break;
+			case "tally":
+				await VoteTally(command);
 				break;
 		}
 	}
@@ -106,14 +127,7 @@ public class MafiaCommands
 			await _db.UpdateMafiaVotes(mafiaGame);
 			
 			// Inform the players of the new count
-			string content = "The vote count is now:";
-			foreach (var vote in mafiaGame.Tally)
-			{
-				var nickname = guild.GetUser(vote.Key).DisplayName;
-				content += $"\n{nickname} - {vote.Value}";
-			}
-
-			await msg.Channel.SendMessageAsync(content);
+			await SendTally(msg.Channel, mafiaGame);
 		}
 	}
 
@@ -123,6 +137,7 @@ public class MafiaCommands
 		{
 			Guild = ctx.GuildId ?? ulong.MinValue,
 			Channel = ctx.ChannelId ?? ulong.MinValue,
+			GM = ctx.User.Id,
 		};
 
 		await ctx.DeferAsync(true);
@@ -130,10 +145,73 @@ public class MafiaCommands
 
 		if (!success)
 		{
-			await ctx.ModifyOriginalResponseAsync(x => x.Content = "A count is already going on in this channel. Use /stopcount to stop it or /resetcount to reset the tally.");
+			await ctx.ModifyOriginalResponseAsync(x => x.Content = "A count is already going on in this channel. Use /stopvote to stop it or /resetvote to reset the tally.");
 			return;
 		}
 
 		await ctx.ModifyOriginalResponseAsync(x => x.Content = "You've started a vote in this channel.");
+	}
+
+	private async Task StopCount(SocketSlashCommand ctx)
+	{
+		await ctx.DeferAsync(true);
+
+		var success = await _db.DeleteMafiaGame(ctx.GuildId ?? ulong.MinValue, ctx.ChannelId ?? UInt64.MinValue);
+
+		if (!success)
+		{
+			await ctx.ModifyOriginalResponseAsync(x => x.Content = "It looks like there wasn't an active count in this channel.");
+			return;
+		}
+
+		await ctx.ModifyOriginalResponseAsync(x => x.Content = "Successfully stopped the count");
+	}
+
+	private async Task ResetCount(SocketSlashCommand ctx)
+	{
+		await ctx.DeferAsync(true);
+
+		var game = await _db.GetMafiaGame(ctx.Channel.Id);
+
+		if (game is null)
+		{
+			await ctx.ModifyOriginalResponseAsync(x => x.Content = "It seems there is no active count in this channel");
+			return;
+		}
+		
+		game.Votes.Clear();
+		await _db.UpdateMafiaVotes(game);
+		await ctx.ModifyOriginalResponseAsync(x => x.Content = "The count has been reset");
+	}
+
+	private async Task VoteTally(SocketSlashCommand ctx)
+	{
+		await ctx.DeferAsync();
+
+		var game = await _db.GetMafiaGame(ctx.Channel.Id);
+
+		if (game is null)
+		{
+			await ctx.ModifyOriginalResponseAsync(x =>
+				x.Content =
+					"There's no count happening in this channel. If this is a mistake yell at your GM, not me.");
+			return;
+		}
+
+		await ctx.DeleteOriginalResponseAsync();
+		await SendTally(ctx.Channel, game);
+	}
+
+	private async Task SendTally(ISocketMessageChannel channel, MafiaGame game)
+	{
+		var guild = _client.GetGuild(game.Guild);
+		string content = "The vote count is now:";
+		foreach (var vote in game.Tally)
+		{
+			var nickname = guild.GetUser(vote.Key).DisplayName;
+			content += $"\n{nickname} - {vote.Value}";
+		}
+
+		await channel.SendMessageAsync(content);
 	}
 }

@@ -11,6 +11,7 @@ public class MafiaGame
 	public string _id { get; set; } = string.Empty;
 	public ulong Guild { get; set; }
 	public ulong Channel { get; set; }
+	public ulong GM { get; set; }
 	public List<Vote> Votes { get; set; } = new();
 
 	[BsonIgnore]
