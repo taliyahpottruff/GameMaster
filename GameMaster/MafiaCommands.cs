@@ -129,6 +129,23 @@ public class MafiaCommands
 			// Inform the players of the new count
 			await SendTally(msg.Channel, mafiaGame);
 		}
+		else if (msg.Content.ToLower().StartsWith("unlynch"))
+		{
+			var mafiaGame = await _db.GetMafiaGame(msg.Channel.Id);
+			if (mafiaGame is null)
+				return;
+
+			var guild = _client.GetGuild(mafiaGame.Guild);
+
+			var existingVote = mafiaGame.Votes.Find(x => x.From == ctx.Author.Id);
+			
+			if (existingVote is null)
+				return;
+
+			mafiaGame.Votes.Remove(existingVote);
+			await _db.UpdateMafiaVotes(mafiaGame);
+			await SendTally(ctx.Channel, mafiaGame);
+		}
 	}
 
 	private async Task StartCount(SocketSlashCommand ctx)
@@ -156,6 +173,20 @@ public class MafiaCommands
 	{
 		await ctx.DeferAsync(true);
 
+		var game = await _db.GetMafiaGame(ctx.Channel.Id);
+
+		if (game is null)
+		{
+			await ctx.ModifyOriginalResponseAsync(x => x.Content = "There is no active game right now");
+			return;
+		}
+
+		if (game.GM != ctx.User.Id)
+		{
+			await ctx.ModifyOriginalResponseAsync(x => x.Content = "You are not the GM");
+			return;
+		}
+
 		var success = await _db.DeleteMafiaGame(ctx.GuildId ?? ulong.MinValue, ctx.ChannelId ?? UInt64.MinValue);
 
 		if (!success)
@@ -176,6 +207,12 @@ public class MafiaCommands
 		if (game is null)
 		{
 			await ctx.ModifyOriginalResponseAsync(x => x.Content = "It seems there is no active count in this channel");
+			return;
+		}
+
+		if (game.GM != ctx.User.Id)
+		{
+			await ctx.ModifyOriginalResponseAsync(x => x.Content = "You are not the GM");
 			return;
 		}
 		
@@ -209,7 +246,16 @@ public class MafiaCommands
 		foreach (var vote in game.Tally)
 		{
 			var nickname = guild.GetUser(vote.Key).DisplayName;
-			content += $"\n{nickname} - {vote.Value}";
+			content += $"\n{nickname} - ";
+			for (int i = 0; i < vote.Value.Count; i++)
+			{
+				var voter = vote.Value[i];
+				var voterName = guild.GetUser(voter);
+				content += voterName;
+
+				if (i < vote.Value.Count - 1)
+					content += ", ";
+			}
 		}
 
 		await channel.SendMessageAsync(content);

@@ -15,20 +15,20 @@ public class MafiaGame
 	public List<Vote> Votes { get; set; } = new();
 
 	[BsonIgnore]
-	public Dictionary<ulong, uint> Tally
+	public Dictionary<ulong, List<ulong>> Tally
 	{
 		get
 		{
-			Dictionary<ulong, uint> tally = new();
+			Dictionary<ulong, List<ulong>> tally = new();
 			foreach (var vote in Votes)
 			{
 				if (tally.ContainsKey(vote.Against))
 				{
-					tally[vote.Against] += 1;
+					tally[vote.Against].Add(vote.From);
 				}
 				else
 				{
-					tally.Add(vote.Against, 1);
+					tally.Add(vote.Against, new List<ulong>() { vote.From });
 				}
 			}
 
