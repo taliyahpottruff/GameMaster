@@ -41,9 +41,10 @@ public class DataService
 			filter);
 	}
 
-	public async Task DeleteMafiaGame(ulong guild, ulong channel)
+	public async Task<bool> DeleteMafiaGame(ulong guild, ulong channel)
 	{
-		await _mafiaCollection.DeleteManyAsync(x => x.Guild == guild && x.Channel == channel);
+		var result = await _mafiaCollection.DeleteManyAsync(x => x.Guild == guild && x.Channel == channel);
+		return result.DeletedCount > 0;
 	}
 
 	public async Task<bool> MafiaGameExists(ulong channel)
