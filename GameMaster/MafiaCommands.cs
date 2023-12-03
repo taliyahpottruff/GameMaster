@@ -78,7 +78,7 @@ public class MafiaCommands
 					return;
 				}
 				
-				var userToSearchFor = parts[1].ToLower();
+				var userToSearchFor = msg.Content.ToLower().Replace("lynch ", "");
 				var usersInChannel = await msg.Channel.GetUsersAsync().FlattenAsync();
 				SocketGuildUser? currentUser = null;
 				foreach (var user in usersInChannel)
