@@ -246,11 +246,11 @@ public class MafiaCommands
 		foreach (var vote in game.Tally)
 		{
 			var nickname = guild.GetUser(vote.Key).DisplayName;
-			content += $"\n{nickname} - ";
+			content += $"\n{nickname} ({vote.Value.Count}) - ";
 			for (int i = 0; i < vote.Value.Count; i++)
 			{
 				var voter = vote.Value[i];
-				var voterName = guild.GetUser(voter);
+				var voterName = guild.GetUser(voter).DisplayName;
 				content += voterName;
 
 				if (i < vote.Value.Count - 1)
