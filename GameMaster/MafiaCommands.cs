@@ -88,7 +88,7 @@ public class MafiaCommands
 					if (guildUser is null)
 						continue;
 
-					if (guildUser.DisplayName.ToLower().Contains(userToSearchFor))
+					if (guildUser.DisplayName.ToLower().Contains(userToSearchFor) && !guildUser.IsBot)
 					{
 						currentUser = guildUser;
 					}
