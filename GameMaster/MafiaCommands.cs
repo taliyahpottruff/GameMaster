@@ -57,7 +57,8 @@ public class MafiaCommands
 	public async Task HandleMessages(SocketMessage ctx)
 	{
 		var msg = (SocketUserMessage)ctx;
-		if (msg.Content.ToLower().StartsWith("lynch"))
+		var content = msg.CleanContent;
+		if (content.ToLower().StartsWith("lynch"))
 		{
 			var mafiaGame = await _db.GetMafiaGame(msg.Channel.Id);
 			if (mafiaGame is null)
@@ -70,15 +71,14 @@ public class MafiaCommands
 			
 			if (mentionedUsers.Count < 1)
 			{
-				// TODO Find users by name
-				var parts = msg.Content.Split(" ");
+				var parts = content.Split(" ");
 				if (parts.Length < 2)
 				{
 					await msg.ReplyAsync("Please specify who you want to lynch");
 					return;
 				}
 				
-				var userToSearchFor = msg.Content.ToLower().Replace("lynch ", "");
+				var userToSearchFor = parts.RebuildParts(1);
 				var usersInChannel = await msg.Channel.GetUsersAsync().FlattenAsync();
 				SocketGuildUser? currentUser = null;
 				foreach (var user in usersInChannel)
@@ -129,7 +129,7 @@ public class MafiaCommands
 			// Inform the players of the new count
 			await SendTally(msg.Channel, mafiaGame);
 		}
-		else if (msg.Content.ToLower().StartsWith("unlynch"))
+		else if (content.ToLower().StartsWith("unlynch"))
 		{
 			var mafiaGame = await _db.GetMafiaGame(msg.Channel.Id);
 			if (mafiaGame is null)
