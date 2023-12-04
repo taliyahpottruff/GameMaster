@@ -71,7 +71,7 @@ public class MafiaCommands
 			
 			if (mentionedUsers.Count < 1)
 			{
-				var parts = content.Split(" ");
+				var parts = content.ToLower().Split(" ");
 				if (parts.Length < 2)
 				{
 					await msg.ReplyAsync("Please specify who you want to lynch");
