@@ -13,6 +13,8 @@ public class MafiaControls : IDiscordHandler
 	{
 		_client = client;
 		_db = db;
+
+		_client.ButtonExecuted += HandleInteractions;
 	}
 
 	public Task RegisterCommands()

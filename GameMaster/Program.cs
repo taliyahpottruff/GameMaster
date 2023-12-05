@@ -25,11 +25,10 @@ await client.LoginAsync(TokenType.Bot, token);
 await client.StartAsync();
 
 var mafiaCommands = new MafiaCommands(client, dataService);
-var mafiaControls = new MafiaControls(client, dataService);
+_ = new MafiaControls(client, dataService);
 
 client.SlashCommandExecuted += mafiaCommands.HandleSlashCommands;
 client.MessageReceived += mafiaCommands.HandleMessages;
-client.ButtonExecuted += mafiaControls.HandleInteractions;
 client.Ready += async () => await mafiaCommands.RegisterCommands();
 
 // Block this task until the program is closed.
