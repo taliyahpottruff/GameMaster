@@ -9,9 +9,13 @@ public class MafiaGame
 	[BsonId]
 	[BsonRepresentation(BsonType.ObjectId)]
 	public string _id { get; set; } = string.Empty;
+	public string Name { get; set; } = string.Empty;
+	public string SanitizedName { get; set; } = string.Empty;
 	public ulong Guild { get; set; }
+	public ulong ControlPanel { get; set; }
 	public ulong Channel { get; set; }
 	public ulong GM { get; set; }
+	public List<ulong> Players { get; set; } = new();
 	public List<Vote> Votes { get; set; } = new();
 
 	[BsonIgnore]

@@ -19,10 +19,10 @@ public class DataService
 
 	public async Task<bool> CreateNewMafiaGame(MafiaGame game)
 	{
-		var count = await _mafiaCollection.CountDocumentsAsync(x => x.Guild == game.Guild && x.Channel == game.Channel);
+		/*var count = await _mafiaCollection.CountDocumentsAsync(x => x.Guild == game.Guild && x.Channel == game.Channel);
 
 		if (count > 0)
-			return false;
+			return false;*/
 
 		await _mafiaCollection.InsertOneAsync(game);
 		return true;

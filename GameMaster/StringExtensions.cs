@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+
 namespace GameMaster;
 
 public static class StringExtensions
@@ -14,5 +16,11 @@ public static class StringExtensions
 		}
 
 		return result;
+	}
+
+	public static string Sanitize(this string s)
+	{
+		Regex rgx = new Regex("[^a-zA-Z0-9 -]");
+		return rgx.Replace(s, "");
 	}
 }

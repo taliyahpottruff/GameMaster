@@ -33,6 +33,11 @@ public class MafiaCommands
 			.WithName("tally")
 			.WithDescription("Get the current vote tally")
 			.Build());
+		await _client.CreateGlobalApplicationCommandAsync(new SlashCommandBuilder()
+			.WithName("newmafiagame")
+			.WithDescription("Start a new mafia game")
+			.AddOption(new SlashCommandOptionBuilder().WithName("name").WithDescription("Name of the mafia game").WithType(ApplicationCommandOptionType.String).WithRequired(true))
+			.Build());
 	}
 
 	public async Task SlashCommandHandler(SocketSlashCommand command)
@@ -50,6 +55,9 @@ public class MafiaCommands
 				break;
 			case "tally":
 				await VoteTally(command);
+				break;
+			case "newmafiagame":
+				await NewGame(command);
 				break;
 		}
 	}
@@ -146,6 +154,41 @@ public class MafiaCommands
 			await _db.UpdateMafiaVotes(mafiaGame);
 			await SendTally(ctx.Channel, mafiaGame);
 		}
+	}
+
+	public async Task NewGame(SocketSlashCommand cmd)
+	{
+		await cmd.DeferAsync(true);
+		var nameOption = cmd.Data.Options.FirstOrDefault(x => x.Name == "name");
+
+		if (nameOption is null) return;
+
+		var gameName = (string)nameOption.Value;
+		var sanitizedName = gameName.Sanitize().ToLower().Replace(" ", "-");
+
+		var guild = _client.GetGuild(cmd.GuildId ?? ulong.MinValue);
+		if (guild is null) return;
+		var controlPanelChannel = await guild.CreateTextChannelAsync($"{sanitizedName}-control", x =>
+		{
+			x.PermissionOverwrites = new List<Overwrite>()
+			{
+				new Overwrite(guild.EveryoneRole.Id, PermissionTarget.Role, new OverwritePermissions(viewChannel: PermValue.Deny)),
+				new Overwrite(_client.CurrentUser.Id, PermissionTarget.User, new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow)),
+				new Overwrite(cmd.User.Id, PermissionTarget.User, new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow)),
+			};
+			x.CategoryId = guild.CategoryChannels.First(x => x.Channels.FirstOrDefault(x => x.Id == cmd.Channel.Id) is not null).Id;
+		});
+
+		MafiaGame newGame = new() { 
+			GM = cmd.User.Id,
+			Guild = cmd.GuildId ?? ulong.MinValue,
+			ControlPanel = controlPanelChannel.Id,
+			Name = gameName,
+			SanitizedName = sanitizedName,
+		};
+
+		await _db.CreateNewMafiaGame(newGame);
+		await cmd.ModifyOriginalResponseAsync(x => x.Content = $"`{gameName}` has been created. Go to your control panel at https://discord.com/channels/{guild.Id}/{controlPanelChannel.Id} to continue setup of the game.");
 	}
 
 	private async Task StartCount(SocketSlashCommand ctx)
