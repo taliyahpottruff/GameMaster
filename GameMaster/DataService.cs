@@ -31,7 +31,7 @@ public class DataService
 
 	public async Task<MafiaGame?> GetMafiaGame(ulong channel)
 	{
-		var result = await _mafiaCollection.Find(x => x.Channel == channel).FirstOrDefaultAsync();
+		var result = await _mafiaCollection.Find(x => x.Channel == channel || x.ControlPanel == channel).FirstOrDefaultAsync();
 		return result;
 	}
 
@@ -42,9 +42,9 @@ public class DataService
 			filter);
 	}
 
-	public async Task<bool> DeleteMafiaGame(ulong guild, ulong channel)
+	public async Task<bool> DeleteMafiaGame(ulong channel)
 	{
-		var result = await _mafiaCollection.DeleteManyAsync(x => x.Guild == guild && x.Channel == channel);
+		var result = await _mafiaCollection.DeleteManyAsync(x => x.Channel == channel || x.ControlPanel == channel);
 		return result.DeletedCount > 0;
 	}
 

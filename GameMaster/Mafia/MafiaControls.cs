@@ -32,12 +32,21 @@ public class MafiaControls : IDiscordHandler
 
 	public async Task HandleInteractions(SocketMessageComponent component)
 	{
-		switch (component.Data.CustomId)
+		await Task.Run(() =>
 		{
-			case "endGame":
-				await EndGameInitial(component);
-				break;
-		}
+			switch (component.Data.CustomId)
+			{
+				case "endGame":
+					_ = EndGameInitial(component);
+					break;
+				case "endGame-keep":
+					_ = EndGameKeep(component);
+					break;
+				case "endGame-delete":
+					_ = EndGameDelete(component);
+					break;
+			}
+		});
 	}
 
 	#region Button Handlers
@@ -52,6 +61,50 @@ public class MafiaControls : IDiscordHandler
 
 		await Task.Delay(60000);
 		await button.DeleteOriginalResponseAsync();
+	}
+
+	private async Task EndGameKeep(SocketMessageComponent button)
+	{
+		await button.DeferAsync();
+		
+		var game = await _db.GetMafiaGame(button.Channel.Id);
+		bool success = await _db.DeleteMafiaGame(button.Channel.Id);
+
+		if (!success || game is null)
+		{
+			await button.ModifyOriginalResponseAsync(x => x.Content =
+				"Something went wrong. There doesn't seem to be an active mafia game using this channel. Please delete it manually.");
+			return;
+		}
+
+		await button.ModifyOriginalResponseAsync(x => x.Content = "Game removed from database... please wait.");
+
+		var guild = _client.GetGuild(game.Guild);
+
+		if (game.Channel > ulong.MinValue)
+		{
+			if (await _client.GetChannelAsync(game.Channel) is SocketTextChannel channel)
+			{
+				await channel.RemovePermissionOverwriteAsync(guild.EveryoneRole);
+				await channel.RemovePermissionOverwriteAsync(button.User);
+			}
+		}
+
+		foreach (var channelId in game.GameChannels)
+		{
+			if (await _client.GetChannelAsync(game.Channel) is SocketTextChannel channel)
+			{
+				await channel.RemovePermissionOverwriteAsync(guild.EveryoneRole);
+			}
+		}
+
+		//await button.ModifyOriginalResponseAsync(x => x.Content= "Now deleting control panel...");
+		await ((SocketGuildChannel)button.Channel).DeleteAsync();
+	}
+
+	private async Task EndGameDelete(SocketMessageComponent button)
+	{
+		await button.RespondAsync("Not yet implemented");
 	}
 	#endregion
 }

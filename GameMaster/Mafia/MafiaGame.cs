@@ -14,6 +14,7 @@ public class MafiaGame
 	public ulong Guild { get; set; }
 	public ulong ControlPanel { get; set; }
 	public ulong Channel { get; set; }
+	public List<ulong> GameChannels { get; set; } = new();
 	public ulong GM { get; set; }
 	public List<ulong> Players { get; set; } = new();
 	public List<Vote> Votes { get; set; } = new();

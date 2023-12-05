@@ -242,7 +242,7 @@ public class MafiaCommands : IDiscordHandler
 			return;
 		}
 
-		var success = await _db.DeleteMafiaGame(ctx.GuildId ?? ulong.MinValue, ctx.ChannelId ?? UInt64.MinValue);
+		var success = await _db.DeleteMafiaGame(ctx.Channel.Id);
 
 		if (!success)
 		{
