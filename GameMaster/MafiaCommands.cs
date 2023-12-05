@@ -156,7 +156,7 @@ public class MafiaCommands
 		}
 	}
 
-	public async Task NewGame(SocketSlashCommand cmd)
+	private async Task NewGame(SocketSlashCommand cmd)
 	{
 		await cmd.DeferAsync(true);
 		var nameOption = cmd.Data.Options.FirstOrDefault(x => x.Name == "name");
@@ -178,6 +178,19 @@ public class MafiaCommands
 			};
 			x.CategoryId = guild.CategoryChannels.First(x => x.Channels.FirstOrDefault(x => x.Id == cmd.Channel.Id) is not null).Id;
 		});
+		
+		// Send base control panel message
+		await controlPanelChannel.SendMessageAsync(embed: new EmbedBuilder()
+			.WithTitle(gameName)
+			.AddField(new EmbedFieldBuilder().WithName("Players").WithIsInline(true).WithValue("*None*"))
+			.AddField(new EmbedFieldBuilder().WithName("Game Chat Open").WithIsInline(true).WithValue("Not created"))
+			.AddField(new EmbedFieldBuilder().WithName("Voting").WithIsInline(true).WithValue("Closed"))
+			.Build()
+		, components: new ComponentBuilder()
+			.AddRow(new ActionRowBuilder()
+				.WithButton("End Game", "endGame")
+			).Build()
+		);
 
 		MafiaGame newGame = new() { 
 			GM = cmd.User.Id,
