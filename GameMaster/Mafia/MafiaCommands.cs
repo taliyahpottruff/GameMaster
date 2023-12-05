@@ -1,10 +1,9 @@
 using Discord;
-using Discord.Commands;
 using Discord.WebSocket;
 
-namespace GameMaster;
+namespace GameMaster.Mafia;
 
-public class MafiaCommands
+public class MafiaCommands : IDiscordHandler
 {
 	private readonly DiscordSocketClient _client;
 	private readonly DataService _db;
@@ -40,7 +39,7 @@ public class MafiaCommands
 			.Build());
 	}
 
-	public async Task SlashCommandHandler(SocketSlashCommand command)
+	public async Task HandleSlashCommands(SocketSlashCommand command)
 	{
 		switch (command.Data.Name)
 		{

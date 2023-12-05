@@ -1,4 +1,5 @@
 using System.Configuration;
+using GameMaster.Mafia;
 using MongoDB.Driver;
 
 namespace GameMaster;
