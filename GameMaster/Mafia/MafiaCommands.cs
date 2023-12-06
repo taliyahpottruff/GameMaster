@@ -1,10 +1,9 @@
 using Discord;
-using Discord.Commands;
 using Discord.WebSocket;
 
-namespace GameMaster;
+namespace GameMaster.Mafia;
 
-public class MafiaCommands
+public class MafiaCommands : IDiscordHandler
 {
 	private readonly DiscordSocketClient _client;
 	private readonly DataService _db;
@@ -40,7 +39,7 @@ public class MafiaCommands
 			.Build());
 	}
 
-	public async Task SlashCommandHandler(SocketSlashCommand command)
+	public async Task HandleSlashCommands(SocketSlashCommand command)
 	{
 		switch (command.Data.Name)
 		{
@@ -156,7 +155,7 @@ public class MafiaCommands
 		}
 	}
 
-	public async Task NewGame(SocketSlashCommand cmd)
+	private async Task NewGame(SocketSlashCommand cmd)
 	{
 		await cmd.DeferAsync(true);
 		var nameOption = cmd.Data.Options.FirstOrDefault(x => x.Name == "name");
@@ -178,6 +177,19 @@ public class MafiaCommands
 			};
 			x.CategoryId = guild.CategoryChannels.First(x => x.Channels.FirstOrDefault(x => x.Id == cmd.Channel.Id) is not null).Id;
 		});
+		
+		// Send base control panel message
+		await controlPanelChannel.SendMessageAsync(embed: new EmbedBuilder()
+			.WithTitle(gameName)
+			.AddField(new EmbedFieldBuilder().WithName("Players").WithIsInline(true).WithValue("*None*"))
+			.AddField(new EmbedFieldBuilder().WithName("Game Chat Open").WithIsInline(true).WithValue("Not created"))
+			.AddField(new EmbedFieldBuilder().WithName("Voting").WithIsInline(true).WithValue("Closed"))
+			.Build()
+		, components: new ComponentBuilder()
+			.AddRow(new ActionRowBuilder()
+				.WithButton("End Game", "endGame")
+			).Build()
+		);
 
 		MafiaGame newGame = new() { 
 			GM = cmd.User.Id,
@@ -230,7 +242,7 @@ public class MafiaCommands
 			return;
 		}
 
-		var success = await _db.DeleteMafiaGame(ctx.GuildId ?? ulong.MinValue, ctx.ChannelId ?? UInt64.MinValue);
+		var success = await _db.DeleteMafiaGame(ctx.Channel.Id);
 
 		if (!success)
 		{

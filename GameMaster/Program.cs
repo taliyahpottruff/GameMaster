@@ -4,6 +4,7 @@ using System.Configuration;
 using Discord;
 using Discord.WebSocket;
 using GameMaster;
+using GameMaster.Mafia;
 using Microsoft.Extensions.DependencyInjection;
 
 /*var builder = new ServiceCollection();
@@ -24,8 +25,9 @@ await client.LoginAsync(TokenType.Bot, token);
 await client.StartAsync();
 
 var mafiaCommands = new MafiaCommands(client, dataService);
+_ = new MafiaControls(client, dataService);
 
-client.SlashCommandExecuted += mafiaCommands.SlashCommandHandler;
+client.SlashCommandExecuted += mafiaCommands.HandleSlashCommands;
 client.MessageReceived += mafiaCommands.HandleMessages;
 client.Ready += async () => await mafiaCommands.RegisterCommands();
 
