@@ -42,6 +42,12 @@ public class DataService
 			filter);
 	}
 
+	public async Task SetMafiaGameChannel(ulong controlPanel, ulong channel)
+	{
+		var update = Builders<MafiaGame>.Update.Set("Channel", channel);
+		await _mafiaCollection.UpdateOneAsync(x => x.ControlPanel == controlPanel, update);
+	}
+
 	public async Task<bool> DeleteMafiaGame(ulong channel)
 	{
 		var result = await _mafiaCollection.DeleteManyAsync(x => x.Channel == channel || x.ControlPanel == channel);

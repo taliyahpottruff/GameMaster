@@ -1,6 +1,7 @@
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
+using System;
 
 namespace GameMaster.Mafia;
 
@@ -76,5 +77,36 @@ public class MafiaControls : InteractionModuleBase
 		//await button.ModifyOriginalResponseAsync(x => x.Content= "Now deleting control panel...");
 		await ((SocketGuildChannel)Context.Channel).DeleteAsync();
 	}
+
+	[ComponentInteraction("createChannel")]
+	private async Task CreateChannel()
+	{
+		await DeferAsync(true);
+
+		var game = await _db.GetMafiaGame(Context.Channel.Id);
+		if (game is null) return;
+
+		if (game.Channel > ulong.MinValue)
+		{
+			await ModifyOriginalResponseAsync(x => x.Content = "There's already a primary game channel for this game!");
+			return;
+		}
+
+		var guild = Context.Guild;
+        var category = ((SocketGuild)guild).CategoryChannels.First(x => x.Channels.FirstOrDefault(x => x.Id == Context.Channel.Id) is not null).Id;
+        var gameChannel = await guild.CreateTextChannelAsync(game.SanitizedName, x =>
+        {
+            x.PermissionOverwrites = new List<Overwrite>()
+            {
+                new Overwrite(guild.EveryoneRole.Id, PermissionTarget.Role, new OverwritePermissions(sendMessages: PermValue.Deny)),
+                new Overwrite(_client.CurrentUser.Id, PermissionTarget.User, new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow)),
+                new Overwrite(Context.User.Id, PermissionTarget.User, new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow)),
+            };
+            x.CategoryId = category;
+        });
+
+		game.Channel = gameChannel.Id;
+		await _db.SetMafiaGameChannel(game.ControlPanel, game.Channel);
+    }
 	#endregion
 }

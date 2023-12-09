@@ -142,6 +142,7 @@ public class MafiaCommands : InteractionModuleBase
 			.Build()
 		, components: new ComponentBuilder()
 			.AddRow(new ActionRowBuilder()
+				.WithButton("Create day chat", "createChannel")
 				.WithButton("End Game", "endGame")
 			).Build()
 		);
