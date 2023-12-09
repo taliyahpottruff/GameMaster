@@ -59,10 +59,9 @@ public class MafiaControls : InteractionModuleBase
 
 		if (game.Channel > ulong.MinValue)
 		{
-			if (await _client.GetChannelAsync(game.Channel) is SocketTextChannel channel)
+			if (await _client.GetChannelAsync(game.Channel) is ITextChannel channel)
 			{
-				await channel.RemovePermissionOverwriteAsync(guild.EveryoneRole);
-				await channel.RemovePermissionOverwriteAsync(Context.User);
+				await channel.SyncPermissionsAsync();
 			}
 		}
 
@@ -98,9 +97,9 @@ public class MafiaControls : InteractionModuleBase
         {
             x.PermissionOverwrites = new List<Overwrite>()
             {
-                new Overwrite(guild.EveryoneRole.Id, PermissionTarget.Role, new OverwritePermissions(sendMessages: PermValue.Deny)),
-                new Overwrite(_client.CurrentUser.Id, PermissionTarget.User, new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow)),
-                new Overwrite(Context.User.Id, PermissionTarget.User, new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow)),
+                new Overwrite(guild.EveryoneRole.Id, PermissionTarget.Role, new OverwritePermissions(sendMessages: PermValue.Deny, addReactions: PermValue.Deny)),
+                new Overwrite(_client.CurrentUser.Id, PermissionTarget.User, new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow, addReactions: PermValue.Allow)),
+                new Overwrite(Context.User.Id, PermissionTarget.User, new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow, addReactions: PermValue.Allow)),
             };
             x.CategoryId = category;
         });
@@ -108,5 +107,55 @@ public class MafiaControls : InteractionModuleBase
 		game.Channel = gameChannel.Id;
 		await _db.SetMafiaGameChannel(game.ControlPanel, game.Channel);
     }
+
+	[ComponentInteraction("addPlayer:*")]
+	private async Task AddPlayerButton(string playerIdString)
+	{
+		var isPlayerId = ulong.TryParse(playerIdString, out var playerId);
+		if (!isPlayerId)
+			return;
+
+		await DeferAsync(true);
+
+		var game = await _db.GetMafiaGame(Context.Channel.Id);
+		if (game is null) return;
+
+		var success = await _db.AddPlayerToMafiaGame(Context.Channel.Id, playerId);
+		if (!success) return;
+		var gameChannel = await Context.Guild.GetTextChannelAsync(game.Channel);
+		var guildUser = await Context.Guild.GetUserAsync(playerId);
+		await gameChannel.AddPermissionOverwriteAsync(guildUser, new OverwritePermissions(sendMessages: PermValue.Allow, addReactions: PermValue.Inherit));
+
+		await DeleteOriginalResponseAsync();
+	}
+	#endregion
+
+	#region Slash Commands
+
+	[SlashCommand("addplayer", "Add a new player to a mafia game (must be used in the control panel)")]
+	private async Task AddPlayer(string playerName)
+	{
+		await DeferAsync(true);
+		
+		playerName = playerName.ToLower();
+		var foundUsers = await Context.Guild.SearchUsersAsync(playerName);
+		if (foundUsers.Count < 1)
+		{
+			await ModifyOriginalResponseAsync(x => x.Content = "No user with that name was found");
+			return;
+		}
+
+		var user = foundUsers.First();
+		await ModifyOriginalResponseAsync(x =>
+		{
+			x.Content = $"Confirm adding {user.DisplayName} to the game? *(If you want to cancel just click \"Dismiss message\")*";
+			x.Components = new ComponentBuilder()
+				.AddRow(
+					new ActionRowBuilder()
+						.WithButton("Yes", $"addPlayer:{user.Id}"))
+				.Build();
+		});
+	}
+
 	#endregion
 }

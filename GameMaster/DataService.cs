@@ -59,4 +59,11 @@ public class DataService
 		var count = await _mafiaCollection.CountDocumentsAsync(x => x.Channel == channel);
 		return count > 0;
 	}
+
+	public async Task<bool> AddPlayerToMafiaGame(ulong controlPanel, ulong player)
+	{
+		var update = Builders<MafiaGame>.Update.AddToSet("Players", player);
+		var count = await _mafiaCollection.UpdateOneAsync(x => x.ControlPanel == controlPanel, update);
+		return count.MatchedCount > 0;
+	}
 }
