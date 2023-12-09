@@ -1,9 +1,10 @@
 using Discord;
+using Discord.Interactions;
 using Discord.WebSocket;
 
 namespace GameMaster.Mafia;
 
-public class MafiaCommands : IDiscordHandler
+public class MafiaCommands : InteractionModuleBase
 {
 	private readonly DiscordSocketClient _client;
 	private readonly DataService _db;
@@ -12,53 +13,6 @@ public class MafiaCommands : IDiscordHandler
 	{
 		_client = client;
 		_db = db;
-	}
-
-	public async Task RegisterCommands()
-	{
-		await _client.CreateGlobalApplicationCommandAsync(new SlashCommandBuilder()
-			.WithName("startvote")
-			.WithDescription("Start a vote in this channel")
-			.Build());
-		await _client.CreateGlobalApplicationCommandAsync(new SlashCommandBuilder()
-			.WithName("stopvote")
-			.WithDescription("Ends voting in this channel")
-			.Build());
-		await _client.CreateGlobalApplicationCommandAsync(new SlashCommandBuilder()
-			.WithName("resetvote")
-			.WithDescription("Wipe all votes")
-			.Build());
-		await _client.CreateGlobalApplicationCommandAsync(new SlashCommandBuilder()
-			.WithName("tally")
-			.WithDescription("Get the current vote tally")
-			.Build());
-		await _client.CreateGlobalApplicationCommandAsync(new SlashCommandBuilder()
-			.WithName("newmafiagame")
-			.WithDescription("Start a new mafia game")
-			.AddOption(new SlashCommandOptionBuilder().WithName("name").WithDescription("Name of the mafia game").WithType(ApplicationCommandOptionType.String).WithRequired(true))
-			.Build());
-	}
-
-	public async Task HandleSlashCommands(SocketSlashCommand command)
-	{
-		switch (command.Data.Name)
-		{
-			case "startvote":
-				await StartCount(command);
-				break;
-			case "stopvote":
-				await StopCount(command);
-				break;
-			case "resetvote":
-				await ResetCount(command);
-				break;
-			case "tally":
-				await VoteTally(command);
-				break;
-			case "newmafiagame":
-				await NewGame(command);
-				break;
-		}
 	}
 
 	public async Task HandleMessages(SocketMessage ctx)
@@ -155,32 +109,30 @@ public class MafiaCommands : IDiscordHandler
 		}
 	}
 
-	private async Task NewGame(SocketSlashCommand cmd)
+	[SlashCommand("newmafiagame", "Start new mafia game")]
+	private async Task NewGame(string name)
 	{
-		await cmd.DeferAsync(true);
-		var nameOption = cmd.Data.Options.FirstOrDefault(x => x.Name == "name");
+		await DeferAsync(true);
 
-		if (nameOption is null) return;
+		var sanitizedName = name.Sanitize().ToLower().Replace(" ", "-");
 
-		var gameName = (string)nameOption.Value;
-		var sanitizedName = gameName.Sanitize().ToLower().Replace(" ", "-");
-
-		var guild = _client.GetGuild(cmd.GuildId ?? ulong.MinValue);
+		var guild = Context.Guild;
 		if (guild is null) return;
+		var category = ((SocketGuild)guild).CategoryChannels.First(x => x.Channels.FirstOrDefault(x => x.Id == Context.Channel.Id) is not null).Id;
 		var controlPanelChannel = await guild.CreateTextChannelAsync($"{sanitizedName}-control", x =>
 		{
 			x.PermissionOverwrites = new List<Overwrite>()
 			{
 				new Overwrite(guild.EveryoneRole.Id, PermissionTarget.Role, new OverwritePermissions(viewChannel: PermValue.Deny)),
 				new Overwrite(_client.CurrentUser.Id, PermissionTarget.User, new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow)),
-				new Overwrite(cmd.User.Id, PermissionTarget.User, new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow)),
+				new Overwrite(Context.User.Id, PermissionTarget.User, new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow)),
 			};
-			x.CategoryId = guild.CategoryChannels.First(x => x.Channels.FirstOrDefault(x => x.Id == cmd.Channel.Id) is not null).Id;
+			x.CategoryId = category;
 		});
 		
 		// Send base control panel message
 		await controlPanelChannel.SendMessageAsync(embed: new EmbedBuilder()
-			.WithTitle(gameName)
+			.WithTitle(name)
 			.AddField(new EmbedFieldBuilder().WithName("Players").WithIsInline(true).WithValue("*None*"))
 			.AddField(new EmbedFieldBuilder().WithName("Game Chat Open").WithIsInline(true).WithValue("Not created"))
 			.AddField(new EmbedFieldBuilder().WithName("Voting").WithIsInline(true).WithValue("Closed"))
@@ -192,106 +144,114 @@ public class MafiaCommands : IDiscordHandler
 		);
 
 		MafiaGame newGame = new() { 
-			GM = cmd.User.Id,
-			Guild = cmd.GuildId ?? ulong.MinValue,
+			GM = Context.User.Id,
+			Guild = Context.Guild.Id,
 			ControlPanel = controlPanelChannel.Id,
-			Name = gameName,
+			Name = name,
 			SanitizedName = sanitizedName,
 		};
 
 		await _db.CreateNewMafiaGame(newGame);
-		await cmd.ModifyOriginalResponseAsync(x => x.Content = $"`{gameName}` has been created. Go to your control panel at https://discord.com/channels/{guild.Id}/{controlPanelChannel.Id} to continue setup of the game.");
+		await ModifyOriginalResponseAsync(x => x.Content = $"`{name}` has been created. Go to your control panel at https://discord.com/channels/{guild.Id}/{controlPanelChannel.Id} to continue setup of the game.");
 	}
 
-	private async Task StartCount(SocketSlashCommand ctx)
+	[SlashCommand("startvote", "Start a new vote in this channel")]
+	private async Task StartCount()
 	{
+		if (Context.Guild is null)
+			return;
+
 		var game = new MafiaGame
 		{
-			Guild = ctx.GuildId ?? ulong.MinValue,
-			Channel = ctx.ChannelId ?? ulong.MinValue,
-			GM = ctx.User.Id,
+			Guild = Context.Guild.Id,
+			Channel = Context.Channel.Id,
+			GM = Context.User.Id,
 		};
 
-		await ctx.DeferAsync(true);
+		await DeferAsync(true);
 		var success = await _db.CreateNewMafiaGame(game);
 
 		if (!success)
 		{
-			await ctx.ModifyOriginalResponseAsync(x => x.Content = "A count is already going on in this channel. Use /stopvote to stop it or /resetvote to reset the tally.");
+			await ModifyOriginalResponseAsync(x => x.Content = "A count is already going on in this channel. Use /stopvote to stop it or /resetvote to reset the tally.");
 			return;
 		}
 
-		await ctx.ModifyOriginalResponseAsync(x => x.Content = "You've started a vote in this channel.");
+		await ModifyOriginalResponseAsync(x => x.Content = "You've started a vote in this channel.");
 	}
 
-	private async Task StopCount(SocketSlashCommand ctx)
+	[SlashCommand("stopvote", "Stop the vote in this channel")]
+	private async Task StopCount()
 	{
-		await ctx.DeferAsync(true);
+		await DeferAsync(true);
 
-		var game = await _db.GetMafiaGame(ctx.Channel.Id);
+		var game = await _db.GetMafiaGame(Context.Channel.Id);
 
 		if (game is null)
 		{
-			await ctx.ModifyOriginalResponseAsync(x => x.Content = "There is no active game right now");
+			await ModifyOriginalResponseAsync(x => x.Content = "There is no active game right now");
 			return;
 		}
 
-		if (game.GM != ctx.User.Id)
+		if (game.GM != Context.User.Id)
 		{
-			await ctx.ModifyOriginalResponseAsync(x => x.Content = "You are not the GM");
+			await ModifyOriginalResponseAsync(x => x.Content = "You are not the GM");
 			return;
 		}
 
-		var success = await _db.DeleteMafiaGame(ctx.Channel.Id);
+		var success = await _db.DeleteMafiaGame(Context.Channel.Id);
 
 		if (!success)
 		{
-			await ctx.ModifyOriginalResponseAsync(x => x.Content = "It looks like there wasn't an active count in this channel.");
+			await ModifyOriginalResponseAsync(x => x.Content = "It looks like there wasn't an active count in this channel.");
 			return;
 		}
 
-		await ctx.ModifyOriginalResponseAsync(x => x.Content = "Successfully stopped the count");
+		await ModifyOriginalResponseAsync(x => x.Content = "Successfully stopped the count");
 	}
 
-	private async Task ResetCount(SocketSlashCommand ctx)
-	{
-		await ctx.DeferAsync(true);
 
-		var game = await _db.GetMafiaGame(ctx.Channel.Id);
+	[SlashCommand("resetvote", "Clear all of the votes going on in this channel")]
+	private async Task ResetCount()
+	{
+		await DeferAsync(true);
+
+		var game = await _db.GetMafiaGame(Context.Channel.Id);
 
 		if (game is null)
 		{
-			await ctx.ModifyOriginalResponseAsync(x => x.Content = "It seems there is no active count in this channel");
+			await ModifyOriginalResponseAsync(x => x.Content = "It seems there is no active count in this channel");
 			return;
 		}
 
-		if (game.GM != ctx.User.Id)
+		if (game.GM != Context.User.Id)
 		{
-			await ctx.ModifyOriginalResponseAsync(x => x.Content = "You are not the GM");
+			await ModifyOriginalResponseAsync(x => x.Content = "You are not the GM");
 			return;
 		}
 		
 		game.Votes.Clear();
 		await _db.UpdateMafiaVotes(game);
-		await ctx.ModifyOriginalResponseAsync(x => x.Content = "The count has been reset");
+		await ModifyOriginalResponseAsync(x => x.Content = "The count has been reset");
 	}
 
-	private async Task VoteTally(SocketSlashCommand ctx)
+	[SlashCommand("tally", "Show the vote tally in this channel")]
+	private async Task VoteTally()
 	{
-		await ctx.DeferAsync();
+		await DeferAsync();
 
-		var game = await _db.GetMafiaGame(ctx.Channel.Id);
+		var game = await _db.GetMafiaGame(Context.Channel.Id);
 
 		if (game is null)
 		{
-			await ctx.ModifyOriginalResponseAsync(x =>
+			await ModifyOriginalResponseAsync(x =>
 				x.Content =
 					"There's no count happening in this channel. If this is a mistake yell at your GM, not me.");
 			return;
 		}
 
-		await ctx.DeleteOriginalResponseAsync();
-		await SendTally(ctx.Channel, game);
+		await DeleteOriginalResponseAsync();
+		await SendTally((ISocketMessageChannel)Context.Channel, game);
 	}
 
 	private async Task SendTally(ISocketMessageChannel channel, MafiaGame game)
