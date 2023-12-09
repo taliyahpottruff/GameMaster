@@ -32,7 +32,8 @@ var mafiaCommands = new MafiaCommands(client, dataService);
 _ = new MafiaControls(client, dataService);
 
 var interactionService = new InteractionService(client);
-var info = await interactionService.AddModuleAsync<MafiaCommands>(serviceProvider);
+await interactionService.AddModuleAsync<MafiaCommands>(serviceProvider);
+await interactionService.AddModuleAsync<MafiaControls>(serviceProvider);
 client.InteractionCreated += async (x) =>
 {
 	var ctx = new SocketInteractionContext(client, x);
