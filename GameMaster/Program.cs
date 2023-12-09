@@ -17,8 +17,8 @@ var client = new DiscordSocketClient(new DiscordSocketConfig()
 });
 
 var builder = new ServiceCollection();
-builder.AddSingleton<DataService>();
-builder.AddSingleton<DiscordSocketClient>(client);
+builder.AddSingleton(dataService);
+builder.AddSingleton(client);
 var serviceProvider = builder.BuildServiceProvider();
 
 client.Log += Log;
@@ -31,16 +31,17 @@ await client.StartAsync();
 var mafiaCommands = new MafiaCommands(client, dataService);
 _ = new MafiaControls(client, dataService);
 
-//client.SlashCommandExecuted += mafiaCommands.HandleSlashCommands;
-client.MessageReceived += mafiaCommands.HandleMessages;
-//client.Ready += async () => await mafiaCommands.RegisterCommands();
-
 var interactionService = new InteractionService(client);
-await interactionService.AddModuleAsync<MafiaCommands>(serviceProvider);
+var info = await interactionService.AddModuleAsync<MafiaCommands>(serviceProvider);
 client.InteractionCreated += async (x) =>
 {
 	var ctx = new SocketInteractionContext(client, x);
 	await interactionService.ExecuteCommandAsync(ctx, serviceProvider);
+};
+
+client.MessageReceived += async (x) =>
+{
+	await MafiaCommands.HandleMessages(client, dataService, x);
 };
 
 // Block this task until the program is closed.

@@ -15,17 +15,17 @@ public class MafiaCommands : InteractionModuleBase
 		_db = db;
 	}
 
-	public async Task HandleMessages(SocketMessage ctx)
+	public static async Task HandleMessages(DiscordSocketClient client, DataService db, SocketMessage ctx)
 	{
 		var msg = (SocketUserMessage)ctx;
 		var content = msg.CleanContent;
 		if (content.ToLower().StartsWith("lynch"))
 		{
-			var mafiaGame = await _db.GetMafiaGame(msg.Channel.Id);
+			var mafiaGame = await db.GetMafiaGame(msg.Channel.Id);
 			if (mafiaGame is null)
 				return;
 
-			var guild = _client.GetGuild(mafiaGame.Guild);
+			var guild = client.GetGuild(mafiaGame.Guild);
 			
 			var mentionedUsers = msg.MentionedUsers;
 			SocketUser? votingAgainst = null;
@@ -85,18 +85,19 @@ public class MafiaCommands : InteractionModuleBase
 			}
 			
 			// Update the DB
-			await _db.UpdateMafiaVotes(mafiaGame);
+			await db.UpdateMafiaVotes(mafiaGame);
 			
 			// Inform the players of the new count
-			await SendTally(msg.Channel, mafiaGame);
+			string tally = await FormatTally(client, mafiaGame);
+			await msg.Channel.SendMessageAsync(tally);
 		}
 		else if (content.ToLower().StartsWith("unlynch"))
 		{
-			var mafiaGame = await _db.GetMafiaGame(msg.Channel.Id);
+			var mafiaGame = await db.GetMafiaGame(msg.Channel.Id);
 			if (mafiaGame is null)
 				return;
 
-			var guild = _client.GetGuild(mafiaGame.Guild);
+			var guild = client.GetGuild(mafiaGame.Guild);
 
 			var existingVote = mafiaGame.Votes.Find(x => x.From == ctx.Author.Id);
 			
@@ -104,10 +105,12 @@ public class MafiaCommands : InteractionModuleBase
 				return;
 
 			mafiaGame.Votes.Remove(existingVote);
-			await _db.UpdateMafiaVotes(mafiaGame);
-			await SendTally(ctx.Channel, mafiaGame);
+			await db.UpdateMafiaVotes(mafiaGame);
+			string tally = await FormatTally(client, mafiaGame);
+			await msg.Channel.SendMessageAsync(tally);
 		}
 	}
+
 
 	[SlashCommand("newmafiagame", "Start new mafia game")]
 	private async Task NewGame(string name)
@@ -250,13 +253,12 @@ public class MafiaCommands : InteractionModuleBase
 			return;
 		}
 
-		await DeleteOriginalResponseAsync();
-		await SendTally((ISocketMessageChannel)Context.Channel, game);
+		await ModifyOriginalResponseAsync(async (x) => x.Content = await FormatTally(_client,  game));
 	}
 
-	private async Task SendTally(ISocketMessageChannel channel, MafiaGame game)
+	private static async Task<string> FormatTally(DiscordSocketClient client, MafiaGame game)
 	{
-		var guild = _client.GetGuild(game.Guild);
+		var guild = client.GetGuild(game.Guild);
 		string content = "The vote count is now:";
 		foreach (var vote in game.Tally)
 		{
@@ -273,6 +275,6 @@ public class MafiaCommands : InteractionModuleBase
 			}
 		}
 
-		await channel.SendMessageAsync(content);
+		return content;
 	}
 }
