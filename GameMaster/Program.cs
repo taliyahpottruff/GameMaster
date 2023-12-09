@@ -44,6 +44,11 @@ client.MessageReceived += async (x) =>
 	await MafiaCommands.HandleMessages(client, dataService, x);
 };
 
+client.Ready += async () =>
+{
+	await interactionService.RegisterCommandsGloballyAsync();
+};
+
 // Block this task until the program is closed.
 await Task.Delay(-1);
 
