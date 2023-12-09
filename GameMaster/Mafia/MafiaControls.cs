@@ -27,7 +27,14 @@ public class MafiaControls : InteractionModuleBase
 			.Build());
 
 		await Task.Delay(60000);
-		await DeleteOriginalResponseAsync();
+		try
+		{
+			await DeleteOriginalResponseAsync();
+        } 
+		catch (Exception)
+        {
+
+		}
 	}
 
 	[ComponentInteraction("endGame-*")]

@@ -113,7 +113,7 @@ public class MafiaCommands : InteractionModuleBase
 
 
 	[SlashCommand("newmafiagame", "Start new mafia game")]
-	private async Task NewGame(string name)
+	private async Task NewGame(string name, bool createChannel = false)
 	{
 		await DeferAsync(true);
 
