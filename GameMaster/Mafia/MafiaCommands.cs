@@ -154,6 +154,21 @@ public class MafiaCommands : InteractionModuleBase
 			SanitizedName = sanitizedName,
 		};
 
+		if (createChannel)
+		{
+            var gameChannel = await guild.CreateTextChannelAsync(sanitizedName, x =>
+            {
+                x.PermissionOverwrites = new List<Overwrite>()
+            {
+                new Overwrite(guild.EveryoneRole.Id, PermissionTarget.Role, new OverwritePermissions(sendMessages: PermValue.Deny)),
+                new Overwrite(_client.CurrentUser.Id, PermissionTarget.User, new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow)),
+                new Overwrite(Context.User.Id, PermissionTarget.User, new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow)),
+            };
+                x.CategoryId = category;
+            });
+			newGame.Channel = gameChannel.Id;
+        }
+
 		await _db.CreateNewMafiaGame(newGame);
 		await ModifyOriginalResponseAsync(x => x.Content = $"`{name}` has been created. Go to your control panel at https://discord.com/channels/{guild.Id}/{controlPanelChannel.Id} to continue setup of the game.");
 	}

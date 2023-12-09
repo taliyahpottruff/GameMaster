@@ -13,7 +13,13 @@ public class MafiaGame
 	public string SanitizedName { get; set; } = string.Empty;
 	public ulong Guild { get; set; }
 	public ulong ControlPanel { get; set; }
+	/// <summary>
+	/// The primary game chat. Also known as a "day chat"
+	/// </summary>
 	public ulong Channel { get; set; }
+	/// <summary>
+	/// Any additional channels including scum chats
+	/// </summary>
 	public List<ulong> GameChannels { get; set; } = new();
 	public ulong GM { get; set; }
 	public List<ulong> Players { get; set; } = new();
