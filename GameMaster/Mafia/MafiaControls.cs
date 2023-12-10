@@ -120,7 +120,7 @@ public class MafiaControls : InteractionModuleBase
         {
             x.PermissionOverwrites = new List<Overwrite>()
             {
-                new Overwrite(guild.EveryoneRole.Id, PermissionTarget.Role, new OverwritePermissions(sendMessages: PermValue.Deny, addReactions: PermValue.Deny)),
+                new Overwrite(guild.EveryoneRole.Id, PermissionTarget.Role, new OverwritePermissions(viewChannel: PermValue.Deny, sendMessages: PermValue.Deny, addReactions: PermValue.Deny)),
                 new Overwrite(_client.CurrentUser.Id, PermissionTarget.User, new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow, addReactions: PermValue.Allow)),
                 new Overwrite(Context.User.Id, PermissionTarget.User, new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow, addReactions: PermValue.Allow)),
             };
@@ -154,7 +154,7 @@ public class MafiaControls : InteractionModuleBase
         var gameChannel = await Context.Guild.GetTextChannelAsync(game.Channel);
 		var guildUser = await Context.Guild.GetUserAsync(playerId);
 		if (game.Channel > ulong.MinValue)
-			await gameChannel.AddPermissionOverwriteAsync(guildUser, new OverwritePermissions(sendMessages: PermValue.Allow, addReactions: PermValue.Inherit));
+			await gameChannel.AddPermissionOverwriteAsync(guildUser, new OverwritePermissions(viewChannel: (game.ChatStatus != MafiaGame.GameChatStatus.Unviewable) ? PermValue.Allow : PermValue.Deny, sendMessages: (game.ChatStatus == MafiaGame.GameChatStatus.Open) ? PermValue.Allow : PermValue.Deny, addReactions: PermValue.Inherit));
 
         // Update control panel message
         await UpdateControlPanelMessage(game);
@@ -167,6 +167,31 @@ public class MafiaControls : InteractionModuleBase
 	{
 		var channel = (ITextChannel)await _client.GetChannelAsync(ulong.Parse(channelId));
 		await channel.DeleteMessageAsync(ulong.Parse(messageId));
+	}
+
+	[ComponentInteraction("chat:*")]
+	private async Task SetChat(string status)
+	{
+		bool open = status == "open";
+		await DeferAsync();
+
+		var game = await _db.GetMafiaGame(Context.Channel.Id);
+		if (game is null) return;
+
+		if (game.Channel == ulong.MinValue) return;
+		var guild = _client.GetGuild(game.Guild);
+		var channel = (ITextChannel)await _client.GetChannelAsync(game.Channel);
+
+		await channel.AddPermissionOverwriteAsync(guild.EveryoneRole, new OverwritePermissions(viewChannel: PermValue.Inherit, sendMessages: PermValue.Deny, addReactions: PermValue.Deny));
+		foreach (var playerId in game.Players)
+		{
+			var user = await _client.GetUserAsync(playerId);
+			await channel.AddPermissionOverwriteAsync(user, new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: open ? PermValue.Allow : PermValue.Deny, addReactions: PermValue.Inherit));
+		}
+		game.ChatStatus = open ? MafiaGame.GameChatStatus.Open : MafiaGame.GameChatStatus.Closed;
+		await _db.SetMafiaGameChatStatus(game.ControlPanel, game.ChatStatus);
+
+		await UpdateControlPanelMessage(game);
 	}
 	#endregion
 

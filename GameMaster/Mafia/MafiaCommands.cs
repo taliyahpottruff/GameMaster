@@ -143,7 +143,9 @@ public class MafiaCommands : InteractionModuleBase
 		, components: new ComponentBuilder()
 			.AddRow(new ActionRowBuilder()
 				.WithButton("Create day chat", "createChannel")
-				.WithButton("End Game", "endGame")
+				.WithButton("Open game chat", "chat:open")
+				.WithButton("Close game chat", "chat:close")
+				.WithButton("End Game", "endGame", ButtonStyle.Danger)
 			).Build()
 		);
 
@@ -162,7 +164,7 @@ public class MafiaCommands : InteractionModuleBase
             {
                 x.PermissionOverwrites = new List<Overwrite>()
             {
-                new Overwrite(guild.EveryoneRole.Id, PermissionTarget.Role, new OverwritePermissions(sendMessages: PermValue.Deny, addReactions: PermValue.Deny)),
+                new Overwrite(guild.EveryoneRole.Id, PermissionTarget.Role, new OverwritePermissions(viewChannel: PermValue.Deny, sendMessages: PermValue.Deny, addReactions: PermValue.Deny)),
                 new Overwrite(_client.CurrentUser.Id, PermissionTarget.User, new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow, addReactions: PermValue.Allow)),
                 new Overwrite(Context.User.Id, PermissionTarget.User, new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow, addReactions: PermValue.Allow)),
             };
