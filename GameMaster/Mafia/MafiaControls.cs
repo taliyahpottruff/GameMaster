@@ -201,8 +201,15 @@ public class MafiaControls : InteractionModuleBase
 	private async Task AddPlayer(string playerName)
 	{
 		await DeferAsync();
-		
-		playerName = playerName.ToLower();
+
+		var game = await _db.GetMafiaGame(Context.Channel.Id);
+        if (game is null)
+        {
+			await ModifyOriginalResponseAsync(x => x.Content = "You can only use this command in a game of mafia");
+			return;
+        }
+
+        playerName = playerName.ToLower();
 		var foundUsers = await Context.Guild.SearchUsersAsync(playerName);
 		if (foundUsers.Count < 1)
 		{
