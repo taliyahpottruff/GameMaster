@@ -78,7 +78,10 @@ public class MafiaControls : InteractionModuleBase
 		{
 			if (await _client.GetChannelAsync(game.Channel) is ITextChannel channel)
 			{
-				await channel.SyncPermissionsAsync();
+				if (option == "keep")
+					await channel.SyncPermissionsAsync();
+				else
+					await channel.DeleteAsync();
 			}
 		}
 
@@ -86,8 +89,11 @@ public class MafiaControls : InteractionModuleBase
 		{
 			if (await _client.GetChannelAsync(game.Channel) is SocketTextChannel channel)
 			{
-				await channel.RemovePermissionOverwriteAsync(guild.EveryoneRole);
-			}
+				if (option == "keep")
+					await channel.RemovePermissionOverwriteAsync(guild.EveryoneRole);
+                else
+                    await channel.DeleteAsync();
+            }
 		}
 
 		//await button.ModifyOriginalResponseAsync(x => x.Content= "Now deleting control panel...");
