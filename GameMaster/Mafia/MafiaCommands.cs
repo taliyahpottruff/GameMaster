@@ -1,6 +1,7 @@
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
+using GameMaster.Extensions;
 
 namespace GameMaster.Mafia;
 
