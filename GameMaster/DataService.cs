@@ -48,6 +48,17 @@ public class DataService
 		await _mafiaCollection.UpdateOneAsync(x => x.ControlPanel == controlPanel, update);
 	}
 
+	/// <summary>
+	/// Set the game chat status
+	/// </summary>
+	/// <param name="channel">Either the control panel or game chat ID</param>
+	/// <param name="status">The status you want to set</param>
+	public async Task SetMafiaGameChatStatus(ulong channel, MafiaGame.GameChatStatus status)
+	{
+		var update = Builders<MafiaGame>.Update.Set("ChatStatus", status);
+		await _mafiaCollection.UpdateOneAsync(x => x.ControlPanel == channel || x.Channel == channel, update);
+	}
+
 	public async Task<bool> DeleteMafiaGame(ulong channel)
 	{
 		var result = await _mafiaCollection.DeleteManyAsync(x => x.Channel == channel || x.ControlPanel == channel);

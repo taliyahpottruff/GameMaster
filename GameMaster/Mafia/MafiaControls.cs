@@ -17,7 +17,7 @@ public class MafiaControls : InteractionModuleBase
 		_db = db;
 	}
 
-	private async void UpdateControlPanelMessage(MafiaGame game)
+	private async Task UpdateControlPanelMessage(MafiaGame game)
 	{
 		// Get the message
 		var guild = _client.GetGuild(game.Guild);
@@ -25,7 +25,7 @@ public class MafiaControls : InteractionModuleBase
 		await channel.ModifyMessageAsync(game.ControlPanelMessage, x => {
 			x.Embed = new EmbedBuilder()
 				.WithTitle(game.Name)
-				.AddField(new EmbedFieldBuilder().WithName("Players").WithIsInline(true).WithValue(String.Join('\n', game.Players.Select(p => guild.GetUser(p).DisplayName))))
+				.AddField(new EmbedFieldBuilder().WithName("Players").WithIsInline(true).WithValue(game.Players.Count > 0 ? String.Join('\n', game.Players.Select(p => guild.GetUser(p).DisplayName)) : "*None*"))
 				.AddField(new EmbedFieldBuilder().WithName("Game Chat Open").WithIsInline(true).WithValue(game.ChatStatusAsString()))
 				.AddField(new EmbedFieldBuilder().WithName("Voting").WithIsInline(true).WithValue(game.VotingOpen ? "Open" : "Closed"))
 				.Build();
@@ -123,6 +123,11 @@ public class MafiaControls : InteractionModuleBase
 
 		game.Channel = gameChannel.Id;
 		await _db.SetMafiaGameChannel(game.ControlPanel, game.Channel);
+
+		game.ChatStatus = MafiaGame.GameChatStatus.Unviewable;
+		await _db.SetMafiaGameChatStatus(game.ControlPanel, game.ChatStatus);
+		
+		await UpdateControlPanelMessage(game);
     }
 
 	[ComponentInteraction("addPlayer:*")]
@@ -139,13 +144,14 @@ public class MafiaControls : InteractionModuleBase
 
 		var success = await _db.AddPlayerToMafiaGame(Context.Channel.Id, playerId);
 		if (!success) return;
-		var gameChannel = await Context.Guild.GetTextChannelAsync(game.Channel);
+        game.Players.Add(playerId);
+        var gameChannel = await Context.Guild.GetTextChannelAsync(game.Channel);
 		var guildUser = await Context.Guild.GetUserAsync(playerId);
 		if (game.Channel > ulong.MinValue)
 			await gameChannel.AddPermissionOverwriteAsync(guildUser, new OverwritePermissions(sendMessages: PermValue.Allow, addReactions: PermValue.Inherit));
 
         // Update control panel message
-        UpdateControlPanelMessage(game);
+        await UpdateControlPanelMessage(game);
 
         await DeleteOriginalResponseAsync();
 	}
