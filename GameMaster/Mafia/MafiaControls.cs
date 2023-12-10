@@ -2,6 +2,7 @@ using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
 using System;
+using System.Xml.Linq;
 
 namespace GameMaster.Mafia;
 
@@ -14,6 +15,22 @@ public class MafiaControls : InteractionModuleBase
 	{
 		_client = client;
 		_db = db;
+	}
+
+	private async void UpdateControlPanelMessage(MafiaGame game)
+	{
+		// Get the message
+		var guild = _client.GetGuild(game.Guild);
+		var channel = (ITextChannel)await _client.GetChannelAsync(game.ControlPanel);
+		await channel.ModifyMessageAsync(game.ControlPanelMessage, x => {
+			x.Embed = new EmbedBuilder()
+				.WithTitle(game.Name)
+				.AddField(new EmbedFieldBuilder().WithName("Players").WithIsInline(true).WithValue(String.Join('\n', game.Players.Select(p => guild.GetUser(p).DisplayName))))
+				.AddField(new EmbedFieldBuilder().WithName("Game Chat Open").WithIsInline(true).WithValue(game.ChatStatusAsString()))
+				.AddField(new EmbedFieldBuilder().WithName("Voting").WithIsInline(true).WithValue(game.VotingOpen ? "Open" : "Closed"))
+				.Build();
+
+        });
 	}
 
 	#region Button Handlers
@@ -124,9 +141,20 @@ public class MafiaControls : InteractionModuleBase
 		if (!success) return;
 		var gameChannel = await Context.Guild.GetTextChannelAsync(game.Channel);
 		var guildUser = await Context.Guild.GetUserAsync(playerId);
-		await gameChannel.AddPermissionOverwriteAsync(guildUser, new OverwritePermissions(sendMessages: PermValue.Allow, addReactions: PermValue.Inherit));
+		if (game.Channel > ulong.MinValue)
+			await gameChannel.AddPermissionOverwriteAsync(guildUser, new OverwritePermissions(sendMessages: PermValue.Allow, addReactions: PermValue.Inherit));
 
-		await DeleteOriginalResponseAsync();
+        // Update control panel message
+        UpdateControlPanelMessage(game);
+
+        await DeleteOriginalResponseAsync();
+	}
+
+	[ComponentInteraction("deleteMessage:*,*")]
+	private async Task DeleteMessage(string channelId, string messageId)
+	{
+		var channel = (ITextChannel)await _client.GetChannelAsync(ulong.Parse(channelId));
+		await channel.DeleteMessageAsync(ulong.Parse(messageId));
 	}
 	#endregion
 
@@ -135,7 +163,7 @@ public class MafiaControls : InteractionModuleBase
 	[SlashCommand("addplayer", "Add a new player to a mafia game (must be used in the control panel)")]
 	private async Task AddPlayer(string playerName)
 	{
-		await DeferAsync(true);
+		await DeferAsync();
 		
 		playerName = playerName.ToLower();
 		var foundUsers = await Context.Guild.SearchUsersAsync(playerName);
@@ -146,15 +174,17 @@ public class MafiaControls : InteractionModuleBase
 		}
 
 		var user = foundUsers.First();
-		await ModifyOriginalResponseAsync(x =>
+		var message = await ModifyOriginalResponseAsync(x =>
 		{
-			x.Content = $"Confirm adding {user.DisplayName} to the game? *(If you want to cancel just click \"Dismiss message\")*";
-			x.Components = new ComponentBuilder()
-				.AddRow(
-					new ActionRowBuilder()
-						.WithButton("Yes", $"addPlayer:{user.Id}"))
-				.Build();
+			x.Content = $"Confirm adding {user.DisplayName} to the game?";
 		});
+		await ModifyOriginalResponseAsync(x => x.Components = new ComponentBuilder()
+                .AddRow(
+                    new ActionRowBuilder()
+                        .WithButton("Yes", $"addPlayer:{user.Id}", ButtonStyle.Success)
+                        .WithButton("No", $"deleteMessage:{Context.Channel.Id},{message.Id}", ButtonStyle.Danger)
+				).Build()
+		);
 	}
 
 	#endregion

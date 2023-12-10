@@ -13,6 +13,7 @@ public class MafiaGame
 	public string SanitizedName { get; set; } = string.Empty;
 	public ulong Guild { get; set; }
 	public ulong ControlPanel { get; set; }
+	public ulong ControlPanelMessage { get; set; }
 	/// <summary>
 	/// The primary game chat. Also known as a "day chat"
 	/// </summary>
@@ -20,9 +21,11 @@ public class MafiaGame
 	/// <summary>
 	/// Any additional channels including scum chats
 	/// </summary>
+	public GameChatStatus ChatStatus { get; set; }
 	public List<ulong> GameChannels { get; set; } = new();
 	public ulong GM { get; set; }
 	public List<ulong> Players { get; set; } = new();
+	public bool VotingOpen { get; set; }
 	public List<Vote> Votes { get; set; } = new();
 
 	[BsonIgnore]
@@ -47,9 +50,29 @@ public class MafiaGame
 		}
 	}
 
+	public string ChatStatusAsString()
+	{
+		return ChatStatus switch
+		{
+			GameChatStatus.NotCreated => "Not created",
+			GameChatStatus.Unviewable => "Not viewable",
+			GameChatStatus.Closed => "Closed",
+			GameChatStatus.Open => "Open",
+			_ => "[Error]"
+		};
+	}
+
 	public class Vote
 	{
 		public ulong From { get; set; }
 		public ulong Against { get; set; }
+	}
+
+	public enum GameChatStatus
+	{
+		NotCreated = 0,
+		Unviewable = 1,
+		Closed = 2,
+		Open = 3,
 	}
 }

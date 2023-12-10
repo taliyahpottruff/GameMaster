@@ -134,7 +134,7 @@ public class MafiaCommands : InteractionModuleBase
 		});
 		
 		// Send base control panel message
-		await controlPanelChannel.SendMessageAsync(embed: new EmbedBuilder()
+		var controlPanelMessage = await controlPanelChannel.SendMessageAsync(embed: new EmbedBuilder()
 			.WithTitle(name)
 			.AddField(new EmbedFieldBuilder().WithName("Players").WithIsInline(true).WithValue("*None*"))
 			.AddField(new EmbedFieldBuilder().WithName("Game Chat Open").WithIsInline(true).WithValue("Not created"))
@@ -151,6 +151,7 @@ public class MafiaCommands : InteractionModuleBase
 			GM = Context.User.Id,
 			Guild = Context.Guild.Id,
 			ControlPanel = controlPanelChannel.Id,
+			ControlPanelMessage = controlPanelMessage.Id,
 			Name = name,
 			SanitizedName = sanitizedName,
 		};
