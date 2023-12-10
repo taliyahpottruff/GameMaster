@@ -78,18 +78,35 @@ public class MafiaControls : InteractionModuleBase
 		{
 			if (await _client.GetChannelAsync(game.Channel) is ITextChannel channel)
 			{
-				try
+				if (option == "keep")
 				{
-					if (option == "keep")
-						await channel.SyncPermissionsAsync();
-					else
+					try
+					{
+						await channel.RemovePermissionOverwriteAsync(guild.EveryoneRole);
+						foreach (var playerId in game.Players)
+						{
+							var player = guild.GetUser(playerId);
+							await channel.RemovePermissionOverwriteAsync(player);
+						}
+					}
+					catch (Exception e)
+					{
+						Console.WriteLine($"There may be permissions errors in {guild.Id}");
+						Console.WriteLine(e.ToString());
+					}
+				}
+				else
+				{
+					try
+					{
 						await channel.DeleteAsync();
+					}
+					catch 
+					{
+						Console.WriteLine($"Can't delete channel in {guild.Id}");
+					}
 				}
-				catch (Exception e)
-				{
-					Console.WriteLine($"There may be permissions errors in {guild.Id}");
-					Console.WriteLine(e.ToString());
-				}
+				
 			}
 		}
 
