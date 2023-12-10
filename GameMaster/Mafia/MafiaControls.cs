@@ -65,9 +65,9 @@ public class MafiaControls : InteractionModuleBase
 
 		if (!success || game is null)
 		{
-			await ModifyOriginalResponseAsync(x => x.Content =
-				"Something went wrong. There doesn't seem to be an active mafia game using this channel. Please delete it manually.");
-			return;
+			Console.WriteLine($"{Context.Channel.Name}: Something went wrong. There doesn't seem to be an active mafia game using this channel.");
+            await ((SocketGuildChannel)Context.Channel).DeleteAsync();
+            return;
 		}
 
 		await ModifyOriginalResponseAsync(x => x.Content = "Game removed from database... please wait.");
@@ -78,10 +78,17 @@ public class MafiaControls : InteractionModuleBase
 		{
 			if (await _client.GetChannelAsync(game.Channel) is ITextChannel channel)
 			{
-				if (option == "keep")
-					await channel.SyncPermissionsAsync();
-				else
-					await channel.DeleteAsync();
+				try
+				{
+					if (option == "keep")
+						await channel.SyncPermissionsAsync();
+					else
+						await channel.DeleteAsync();
+				}
+				catch
+				{
+					Console.WriteLine($"There may be permissions errors in {guild.Id}");
+				}
 			}
 		}
 
