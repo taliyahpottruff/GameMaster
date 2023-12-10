@@ -2,19 +2,24 @@
 
 using System.Configuration;
 using Discord;
+using Discord.Interactions;
 using Discord.WebSocket;
 using GameMaster;
+using GameMaster.Mafia;
 using Microsoft.Extensions.DependencyInjection;
 
-/*var builder = new ServiceCollection();
-builder.AddSingleton<DataService>();
-builder.BuildServiceProvider();*/
+
 
 var dataService = new DataService();
 var client = new DiscordSocketClient(new DiscordSocketConfig()
 {
 	GatewayIntents = GatewayIntents.All
 });
+
+var builder = new ServiceCollection();
+builder.AddSingleton(dataService);
+builder.AddSingleton(client);
+var serviceProvider = builder.BuildServiceProvider();
 
 client.Log += Log;
 
@@ -24,10 +29,26 @@ await client.LoginAsync(TokenType.Bot, token);
 await client.StartAsync();
 
 var mafiaCommands = new MafiaCommands(client, dataService);
+_ = new MafiaControls(client, dataService);
 
-client.SlashCommandExecuted += mafiaCommands.SlashCommandHandler;
-client.MessageReceived += mafiaCommands.HandleMessages;
-client.Ready += async () => await mafiaCommands.RegisterCommands();
+var interactionService = new InteractionService(client);
+await interactionService.AddModuleAsync<MafiaCommands>(serviceProvider);
+await interactionService.AddModuleAsync<MafiaControls>(serviceProvider);
+client.InteractionCreated += async (x) =>
+{
+	var ctx = new SocketInteractionContext(client, x);
+	await interactionService.ExecuteCommandAsync(ctx, serviceProvider);
+};
+
+client.MessageReceived += async (x) =>
+{
+	await MafiaCommands.HandleMessages(client, dataService, x);
+};
+
+client.Ready += async () =>
+{
+	await interactionService.RegisterCommandsGloballyAsync();
+};
 
 // Block this task until the program is closed.
 await Task.Delay(-1);
