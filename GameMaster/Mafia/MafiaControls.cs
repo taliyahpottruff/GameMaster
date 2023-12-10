@@ -85,9 +85,10 @@ public class MafiaControls : InteractionModuleBase
 					else
 						await channel.DeleteAsync();
 				}
-				catch
+				catch (Exception e)
 				{
 					Console.WriteLine($"There may be permissions errors in {guild.Id}");
+					Console.WriteLine(e.ToString());
 				}
 			}
 		}
