@@ -29,9 +29,15 @@ public class DataService
 		return true;
 	}
 
-	public async Task<MafiaGame?> GetMafiaGame(ulong channel)
+	/// <summary>
+	/// Get a mafia game by channel ID
+	/// </summary>
+	/// <param name="channel">ID of the control panel or game channel (if allowed)</param>
+	/// <param name="allowGameChannel">Allow finding by the game channel</param>
+	/// <returns>The mafia game if it exists</returns>
+	public async Task<MafiaGame?> GetMafiaGame(ulong channel, bool allowGameChannel = true)
 	{
-		var result = await _mafiaCollection.Find(x => x.Channel == channel || x.ControlPanel == channel).FirstOrDefaultAsync();
+		var result = await _mafiaCollection.Find(x => (x.Channel == channel && true) || x.ControlPanel == channel).FirstOrDefaultAsync();
 		return result;
 	}
 
@@ -74,6 +80,13 @@ public class DataService
 	public async Task<bool> AddPlayerToMafiaGame(ulong controlPanel, ulong player)
 	{
 		var update = Builders<MafiaGame>.Update.AddToSet("Players", player);
+		var count = await _mafiaCollection.UpdateOneAsync(x => x.ControlPanel == controlPanel, update);
+		return count.MatchedCount > 0;
+	}
+	
+	public async Task<bool> RemovePlayerFromMafiaGame(ulong controlPanel, ulong player)
+	{
+		var update = Builders<MafiaGame>.Update.Pull("Players", player);
 		var count = await _mafiaCollection.UpdateOneAsync(x => x.ControlPanel == controlPanel, update);
 		return count.MatchedCount > 0;
 	}

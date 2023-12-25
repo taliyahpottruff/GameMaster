@@ -117,7 +117,7 @@ public class MafiaCommands : InteractionModuleBase
 	private async Task NewGame(string name, bool createChannel = false)
 	{
 		await DeferAsync(true);
-
+		
 		var sanitizedName = name.Sanitize().ToLower().Replace(" ", "-");
 
 		var guild = Context.Guild;

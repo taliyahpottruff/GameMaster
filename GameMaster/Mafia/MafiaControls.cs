@@ -186,6 +186,32 @@ public class MafiaControls : InteractionModuleBase
 
         await DeleteOriginalResponseAsync();
 	}
+	
+	[ComponentInteraction("removePlayer:*")]
+	private async Task RemovePlayerButton(string playerIdString)
+	{
+		var isPlayerId = ulong.TryParse(playerIdString, out var playerId);
+		if (!isPlayerId)
+			return;
+
+		await DeferAsync(true);
+
+		var game = await _db.GetMafiaGame(Context.Channel.Id);
+		if (game is null) return;
+
+		var success = await _db.RemovePlayerFromMafiaGame(Context.Channel.Id, playerId);
+		if (!success) return;
+		game.Players.Remove(playerId);
+		var gameChannel = await Context.Guild.GetTextChannelAsync(game.Channel);
+		var guildUser = await Context.Guild.GetUserAsync(playerId);
+		if (game.Channel > ulong.MinValue)
+			await gameChannel.RemovePermissionOverwriteAsync(guildUser);
+			
+		// Update control panel message
+		await UpdateControlPanelMessage(game);
+
+		await DeleteOriginalResponseAsync();
+	}
 
 	[ComponentInteraction("deleteMessage:*,*")]
 	private async Task DeleteMessage(string channelId, string messageId)
@@ -227,7 +253,7 @@ public class MafiaControls : InteractionModuleBase
 	{
 		await DeferAsync();
 
-		var game = await _db.GetMafiaGame(Context.Channel.Id);
+		var game = await _db.GetMafiaGame(Context.Channel.Id, false);
         if (game is null)
         {
 			await ModifyOriginalResponseAsync(x => x.Content = "You can only use this command in a game of mafia");
@@ -256,5 +282,38 @@ public class MafiaControls : InteractionModuleBase
 		);
 	}
 
+	[SlashCommand("removeplayer", "Remove a player from the current mafia game (control panel only)")]
+	private async Task RemovePlayer(string playerName)
+	{
+		await DeferAsync();
+
+		var game = await _db.GetMafiaGame(Context.Channel.Id, false);
+		if (game is null)
+		{
+			await ModifyOriginalResponseAsync(x => x.Content = "You can only use this command in a game of mafia");
+			return;
+		}
+
+		playerName = playerName.ToLower();
+		var foundUsers = await Context.Guild.SearchUsersAsync(playerName);
+		if (foundUsers.Count < 1)
+		{
+			await ModifyOriginalResponseAsync(x => x.Content = "No user with that name was found");
+			return;
+		}
+
+		var user = foundUsers.First();
+		var message = await ModifyOriginalResponseAsync(x =>
+		{
+			x.Content = $"Confirm removing {user.DisplayName} from the game?";
+		});
+		await ModifyOriginalResponseAsync(x => x.Components = new ComponentBuilder()
+			.AddRow(
+				new ActionRowBuilder()
+					.WithButton("Yes", $"removePlayer:{user.Id}", ButtonStyle.Success)
+					.WithButton("No", $"deleteMessage:{Context.Channel.Id},{message.Id}", ButtonStyle.Danger)
+			).Build()
+		);
+	}
 	#endregion
 }
