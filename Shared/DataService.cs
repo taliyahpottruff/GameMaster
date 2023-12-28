@@ -9,6 +9,7 @@ public class DataService
 	private MongoClient _client;
 
 	private readonly IMongoCollection<MafiaGame> _mafiaCollection;
+	private readonly IMongoCollection<User> _userCollection;
 	
 	public DataService()
 	{
@@ -16,6 +17,7 @@ public class DataService
 
 		var db = _client.GetDatabase("gamemaster");
 		_mafiaCollection = db.GetCollection<MafiaGame>("mafia-games");
+		_userCollection = db.GetCollection<User>("users");
 	}
 
 	public async Task<bool> CreateNewMafiaGame(MafiaGame game)
