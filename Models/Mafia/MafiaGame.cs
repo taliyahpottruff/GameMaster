@@ -1,7 +1,7 @@
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
-namespace GameMaster.Mafia;
+namespace GameMaster.Models.Mafia;
 
 [Serializable]
 public class MafiaGame

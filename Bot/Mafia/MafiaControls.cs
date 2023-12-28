@@ -1,10 +1,10 @@
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
-using System;
-using System.Xml.Linq;
+using GameMaster.Models.Mafia;
+using GameMaster.Shared;
 
-namespace GameMaster.Mafia;
+namespace GameMaster.Bot.Mafia;
 
 public class MafiaControls : InteractionModuleBase
 {

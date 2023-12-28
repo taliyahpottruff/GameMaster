@@ -1,8 +1,8 @@
 using System.Configuration;
-using GameMaster.Mafia;
+using GameMaster.Models.Mafia;
 using MongoDB.Driver;
 
-namespace GameMaster;
+namespace GameMaster.Shared;
 
 public class DataService
 {

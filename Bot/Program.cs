@@ -4,8 +4,9 @@ using System.Configuration;
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
-using GameMaster;
-using GameMaster.Mafia;
+using GameMaster.Bot;
+using GameMaster.Bot.Mafia;
+using GameMaster.Shared;
 using Microsoft.Extensions.DependencyInjection;
 
 
