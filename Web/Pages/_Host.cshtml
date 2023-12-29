@@ -3,6 +3,7 @@
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
 @{
     Layout = "_Layout";
+    var accessToken = HttpContext.Request.Cookies["access-token"];
 }
 
-<component type="typeof(App)" render-mode="ServerPrerendered"/>
+<component type="typeof(App)" render-mode="ServerPrerendered" param-AccessToken="accessToken" />

@@ -92,4 +92,23 @@ public class DataService
 		var count = await _mafiaCollection.UpdateOneAsync(x => x.ControlPanel == controlPanel, update);
 		return count.MatchedCount > 0;
 	}
+
+	#region User
+
+	public async Task<bool> AddUser(ulong discordId, string refreshToken)
+	{
+		var existing = await _userCollection.Find(x => x.DiscordId == discordId).FirstOrDefaultAsync();
+
+		if (existing is not null)
+			return false;
+
+		await _userCollection.InsertOneAsync(new User()
+		{
+			DiscordId = discordId,
+			RefreshToken = refreshToken,
+		});
+		return true;
+	}
+
+	#endregion
 }

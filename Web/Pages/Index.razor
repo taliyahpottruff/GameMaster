@@ -1,7 +1,15 @@
 ﻿@page "/"
-
-<PageTitle>GameMaster</PageTitle>
+@inject State State
 
 <h1>GameMaster</h1>
 <h3>A discord bot for running games in your server</h3>
 <a href="https://discord.com/api/oauth2/authorize?client_id=713823987255476307&response_type=code&redirect_uri=https%3A%2F%2Flocalhost%3A5001%2Fauth&scope=guilds+identify+email">Login with Discord</a>
+<button @onclick="SetName">Set name</button>
+
+@code
+{
+    private void SetName()
+    {
+        State.DiscordDisplayName += "_test";
+    }
+}

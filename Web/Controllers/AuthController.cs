@@ -1,5 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
+using System.Net.Http.Headers;
+using GameMaster.Shared;
+using Newtonsoft.Json.Linq;
 
 namespace Web.Controllers;
 
@@ -8,10 +11,12 @@ namespace Web.Controllers;
 public class AuthController : Controller
 {
     private readonly HttpClient _http;
+    private readonly DataService _data;
 
-    public AuthController(HttpClient http)
+    public AuthController(HttpClient http, DataService data)
     {
         _http = http;
+        _data = data;
     }
     
     [HttpGet]
@@ -39,7 +44,15 @@ public class AuthController : Controller
         if (response is null)
             return StatusCode(500);
 
-        return Ok($"Access Token: {response.AccessToken}\nRefresh Token: {response.RefreshToken}");
+        Response.Cookies.Append("access-token", response.AccessToken, new CookieOptions() { Expires = DateTimeOffset.Now.AddSeconds(response.ExpiresIn), Secure = true });
+
+        _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", response.AccessToken);
+        var userInfoString = await _http.GetStringAsync("https://discord.com/api/users/@me");
+        var userInfo = JObject.Parse(userInfoString);
+
+        var discordId = (ulong)userInfo["id"];
+        await _data.AddUser(discordId, response.RefreshToken);
+        return Redirect("/dashboard");
     }
 
     private class DiscordTokenResponse

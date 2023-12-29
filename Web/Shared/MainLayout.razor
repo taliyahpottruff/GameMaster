@@ -1,9 +1,33 @@
 ﻿@inherits LayoutComponentBase
+@inject State State
 
-<PageTitle>Web</PageTitle>
+<PageTitle>GameMaster</PageTitle>
 
 <main>
+    <div>
+        <img src="@State.DiscordAvatar" aria-label="Discord avatar" />
+        @State.DiscordDisplayName
+    </div>
+    
     <article>
         @Body
     </article>
 </main>
+
+@code
+{
+    protected override void OnInitialized()
+    {
+        State.OnStateChanged += StateChanged;
+    }
+
+    public void Dispose()
+    {
+        State.OnStateChanged -= StateChanged;
+    }
+
+    private async void StateChanged()
+    {
+        await InvokeAsync(StateHasChanged);
+    }
+}

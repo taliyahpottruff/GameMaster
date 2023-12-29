@@ -1,7 +1,15 @@
+using Blazored.LocalStorage;
+using GameMaster.Shared;
+using Web.Shared;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+builder.Services.AddBlazoredLocalStorage();
+builder.Services.AddBlazoredLocalStorage(config => config.JsonSerializerOptions.WriteIndented = true);
+builder.Services.AddScoped<State>();
 builder.Services.AddSingleton<HttpClient>();
+builder.Services.AddSingleton<DataService>();
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
 builder.Services.AddControllers();
