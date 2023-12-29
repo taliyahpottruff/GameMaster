@@ -46,5 +46,7 @@ public class State
         }
     }
 
+    public bool IsLoggedIn => DiscordId != String.Empty;
+    
     public event Action? OnStateChanged;
 }

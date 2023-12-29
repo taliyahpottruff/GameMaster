@@ -1,17 +1,22 @@
 ﻿@inherits LayoutComponentBase
 @inject State State
+@inject NavigationManager Navigation
 
 <PageTitle>GameMaster</PageTitle>
 
 <main>
-    <div>
-        <img src="@State.DiscordAvatar" aria-label="Discord avatar" />
-        @State.DiscordDisplayName
-    </div>
-    
+    @if (State.IsLoggedIn)
+    {
+        <div>
+            <img src="@State.DiscordAvatar" aria-label="Discord avatar"/>
+            @State.DiscordDisplayName
+            <button @onclick="Logout">Logout</button>
+        </div>
+    }
+
     <NavLink href="/">Home</NavLink>
     <NavLink href="/dashboard">Dashboard</NavLink>
-    
+
     <article>
         @Body
     </article>
@@ -22,6 +27,11 @@
     protected override void OnInitialized()
     {
         State.OnStateChanged += StateChanged;
+    }
+
+    private void Logout()
+    {
+        Navigation.NavigateTo("/auth/logout", true);
     }
 
     public void Dispose()

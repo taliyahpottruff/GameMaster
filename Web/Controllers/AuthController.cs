@@ -58,6 +58,14 @@ public class AuthController : Controller
         return Redirect("/dashboard");
     }
 
+    [HttpGet("logout")]
+    public async Task<ActionResult> Logout()
+    {
+        Response.Cookies.Delete("access-token");
+        await Task.Delay(1);
+        return Redirect("/");
+    }
+
     private class DiscordTokenResponse
     {
         [JsonProperty("token_type")]

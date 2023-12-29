@@ -1,15 +1,31 @@
 ﻿@page "/"
 @inject State State
+@implements IDisposable
 
-<h1>GameMaster</h1>
-<h3>A discord bot for running games in your server</h3>
-<a href="https://discord.com/api/oauth2/authorize?client_id=713823987255476307&response_type=code&redirect_uri=https%3A%2F%2Flocalhost%3A5001%2Fauth&scope=guilds+identify+email">Login with Discord</a>
-<button @onclick="SetName">Set name</button>
-
-@code
+@if (State.DiscordId == String.Empty)
 {
-    private void SetName()
+    <h1>GameMaster</h1>
+    <h3>A discord bot for running games in your server</h3>
+    <a href="https://discord.com/api/oauth2/authorize?client_id=713823987255476307&response_type=code&redirect_uri=https%3A%2F%2Flocalhost%3A5001%2Fauth&scope=guilds+identify+email">Login with Discord</a>
+}
+else
+{
+    <p>Authenticated</p>
+}
+
+@code {
+    protected override void OnInitialized()
     {
-        State.DiscordDisplayName += "_test";
+        State.OnStateChanged += StateChanged;
+    }
+
+    public void Dispose()
+    {
+        State.OnStateChanged -= StateChanged;
+    }
+
+    private async void StateChanged()
+    {
+        await InvokeAsync(StateHasChanged);
     }
 }
