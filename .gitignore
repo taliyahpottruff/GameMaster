@@ -7,3 +7,4 @@ riderModule.iml
 */app.config
 .DS_Store
 .vs/
+*/appsettings.json

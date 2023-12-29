@@ -1,6 +1,6 @@
 using Blazored.LocalStorage;
 using GameMaster.Shared;
-using Web.Shared;
+using GameMaster.Web.Shared;
 
 var builder = WebApplication.CreateBuilder(args);
 

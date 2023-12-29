@@ -1,0 +1,22 @@
+﻿@page "/dashboard"
+@inject State State
+
+<h3>Dashboard</h3>
+@State.DiscordDisplayName
+
+@code {
+    protected override void OnInitialized()
+    {
+        State.OnStateChanged += StateChanged;
+    }
+
+    public void Dispose()
+    {
+        State.OnStateChanged -= StateChanged;
+    }
+
+    private async void StateChanged()
+    {
+        await InvokeAsync(StateHasChanged);
+    }
+}

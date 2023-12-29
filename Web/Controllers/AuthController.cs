@@ -4,7 +4,7 @@ using System.Net.Http.Headers;
 using GameMaster.Shared;
 using Newtonsoft.Json.Linq;
 
-namespace Web.Controllers;
+namespace GameMaster.Web.Controllers;
 
 [Route("[controller]")]
 [ApiController]
@@ -12,16 +12,19 @@ public class AuthController : Controller
 {
     private readonly HttpClient _http;
     private readonly DataService _data;
+    private IConfiguration Configuration { get; }
 
-    public AuthController(HttpClient http, DataService data)
+    public AuthController(HttpClient http, DataService data, IConfiguration configuration)
     {
         _http = http;
         _data = data;
+        Configuration = configuration;
     }
     
     [HttpGet]
     public async Task<ActionResult> Auth([FromQuery]string code)
     {
+        var clientSecret = Configuration.GetValue<string>("DiscordClientSecret");
         var requestBody = new Dictionary<string, string?>()
         {
             {"grant_type", "authorization_code"},
@@ -32,7 +35,7 @@ public class AuthController : Controller
             {"redirect_uri", "https://discordgamemaster.com/auth"},
             #endif
             {"client_id", "713823987255476307"},
-            {"client_secret", System.Configuration.ConfigurationManager.AppSettings["DiscordClientSecret"]}
+            {"client_secret", clientSecret}
         };
         var result = await _http.PostAsync("https://discord.com/api/oauth2/token", new FormUrlEncodedContent(requestBody));
 

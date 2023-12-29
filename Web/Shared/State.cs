@@ -1,4 +1,4 @@
-﻿namespace Web.Shared;
+﻿namespace GameMaster.Web.Shared;
 
 public class State
 {
