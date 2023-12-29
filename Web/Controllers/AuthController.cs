@@ -29,13 +29,4 @@ public class AuthController : Controller
         await Task.Delay(0);
         return Ok(await result.Content.ReadAsStringAsync());
     }
-
-    private class DiscordTokenRequestModel
-    {
-        public string grant_type = "authorization_code";
-        public string code;
-        public string redirect_uri = String.Empty;
-        public string client_id = "713823987255476307";
-        public string client_secret;
-    }
 }
