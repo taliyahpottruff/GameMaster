@@ -8,6 +8,7 @@ using GameMaster.Bot;
 using GameMaster.Bot.Mafia;
 using GameMaster.Shared;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 
 
@@ -57,6 +58,7 @@ client.Ready += async () =>
 var webBuilder = WebApplication.CreateBuilder(args);
 webBuilder.Services.AddSingleton(dataService);
 webBuilder.Services.AddControllers();
+webBuilder.WebHost.UseUrls("https://localhost:5002");
 var app = webBuilder.Build();
 app.UseHttpsRedirection();
 app.MapControllers();

@@ -1,8 +1,10 @@
 ﻿@page "/dashboard"
 @inject State State
+@inject HttpClient Http
 
 <h3>Dashboard</h3>
 @State.DiscordDisplayName
+<button @onclick="TestWebhook">Test Webhook</button>
 
 @code {
     protected override void OnInitialized()
@@ -10,6 +12,12 @@
         State.OnStateChanged += StateChanged;
     }
 
+    private async Task TestWebhook()
+    {
+        var result = await Http.GetStringAsync("https://localhost:5002/Test");
+        Console.WriteLine(result);
+    }
+    
     public void Dispose()
     {
         State.OnStateChanged -= StateChanged;
