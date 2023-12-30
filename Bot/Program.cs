@@ -7,6 +7,7 @@ using Discord.WebSocket;
 using GameMaster.Bot;
 using GameMaster.Bot.Mafia;
 using GameMaster.Shared;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 
 
@@ -17,10 +18,10 @@ var client = new DiscordSocketClient(new DiscordSocketConfig()
 	GatewayIntents = GatewayIntents.All
 });
 
-var builder = new ServiceCollection();
-builder.AddSingleton(dataService);
-builder.AddSingleton(client);
-var serviceProvider = builder.BuildServiceProvider();
+var botBuilder = new ServiceCollection();
+botBuilder.AddSingleton(dataService);
+botBuilder.AddSingleton(client);
+var serviceProvider = botBuilder.BuildServiceProvider();
 
 client.Log += Log;
 
@@ -50,6 +51,18 @@ client.Ready += async () =>
 {
 	await interactionService.RegisterCommandsGloballyAsync();
 };
+
+#region Web
+
+var webBuilder = WebApplication.CreateBuilder(args);
+webBuilder.Services.AddSingleton(dataService);
+webBuilder.Services.AddControllers();
+var app = webBuilder.Build();
+app.UseHttpsRedirection();
+app.MapControllers();
+app.Run();
+
+#endregion
 
 // Block this task until the program is closed.
 await Task.Delay(-1);
