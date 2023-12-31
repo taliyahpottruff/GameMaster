@@ -17,15 +17,17 @@ public class BotService : IHostedService
     private DiscordSocketClient Client { get; }
     private InteractionService InteractionService { get; }
     private MafiaControlService MafiaControls { get; }
+    private MafiaCommandService MafiaCommandService { get; }
     private IConfiguration Configuration { get; }
     
-    public BotService(DataService data, DiscordSocketClient client, InteractionService interactionService, MafiaControlService mafiaControls, IConfiguration configuration)
+    public BotService(DataService data, DiscordSocketClient client, InteractionService interactionService, MafiaControlService mafiaControls, IConfiguration configuration, MafiaCommandService mafiaCommandService)
     {
         Data = data;
         Client = client;
         InteractionService = interactionService;
         MafiaControls = mafiaControls;
         Configuration = configuration;
+        MafiaCommandService = mafiaCommandService;
     }
     
     public async Task StartAsync(CancellationToken cancellationToken)
@@ -34,6 +36,7 @@ public class BotService : IHostedService
         botBuilder.AddSingleton(Data);
         botBuilder.AddSingleton(Client);
         botBuilder.AddSingleton(MafiaControls);
+        botBuilder.AddSingleton(MafiaCommandService);
         var serviceProvider = botBuilder.BuildServiceProvider();
 
         Client.Log += Log;
@@ -42,8 +45,6 @@ public class BotService : IHostedService
 
         await Client.LoginAsync(TokenType.Bot, token);
         await Client.StartAsync();
-
-        var mafiaCommands = new MafiaCommands(Client, Data);
 
         await InteractionService.AddModuleAsync<MafiaCommands>(serviceProvider);
         await InteractionService.AddModuleAsync<MafiaControls>(serviceProvider);

@@ -20,6 +20,7 @@ builder.Services.AddSingleton(new DiscordSocketClient(new DiscordSocketConfig()
     GatewayIntents = GatewayIntents.All
 }));
 builder.Services.AddSingleton<MafiaControlService>();
+builder.Services.AddSingleton<MafiaCommandService>();
 builder.Services.AddSingleton(x => new InteractionService(x.GetRequiredService<DiscordSocketClient>()));
 builder.Services.AddHostedService<BotService>();
 builder.Services.AddRazorPages();
