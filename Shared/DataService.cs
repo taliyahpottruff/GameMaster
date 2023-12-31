@@ -1,5 +1,6 @@
 using System.Configuration;
-using GameMaster.Models.Mafia;
+using GameMaster.Shared.Mafia;
+using Microsoft.Extensions.Configuration;
 using MongoDB.Driver;
 
 namespace GameMaster.Shared;
@@ -10,10 +11,13 @@ public class DataService
 
 	private readonly IMongoCollection<MafiaGame> _mafiaCollection;
 	private readonly IMongoCollection<User> _userCollection;
+	private IConfiguration Configuration { get; }
 	
-	public DataService()
+	public DataService(IConfiguration configuration)
 	{
-		_client = new MongoClient(ConfigurationManager.AppSettings["MongoURI"] ?? string.Empty);
+		Configuration = configuration;
+		var connectionString = Configuration.GetValue<string>("MongoURI");
+		_client = new MongoClient(connectionString);
 
 		var db = _client.GetDatabase("gamemaster");
 		_mafiaCollection = db.GetCollection<MafiaGame>("mafia-games");

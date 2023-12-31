@@ -1,4 +1,9 @@
 using Blazored.LocalStorage;
+using Discord;
+using Discord.Interactions;
+using Discord.WebSocket;
+using GameMaster.Bot;
+using GameMaster.Bot.Services.Mafia;
 using GameMaster.Shared;
 using GameMaster.Web.Shared;
 
@@ -10,6 +15,13 @@ builder.Services.AddBlazoredLocalStorage(config => config.JsonSerializerOptions.
 builder.Services.AddScoped<State>();
 builder.Services.AddSingleton<HttpClient>();
 builder.Services.AddSingleton<DataService>();
+builder.Services.AddSingleton(new DiscordSocketClient(new DiscordSocketConfig()
+{
+    GatewayIntents = GatewayIntents.All
+}));
+builder.Services.AddSingleton<MafiaControlService>();
+builder.Services.AddSingleton(x => new InteractionService(x.GetRequiredService<DiscordSocketClient>()));
+builder.Services.AddHostedService<BotService>();
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
 builder.Services.AddControllers();

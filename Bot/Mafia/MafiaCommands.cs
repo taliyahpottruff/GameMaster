@@ -2,8 +2,8 @@ using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
 using GameMaster.Bot.Extensions;
-using GameMaster.Models.Mafia;
 using GameMaster.Shared;
+using GameMaster.Shared.Mafia;
 
 namespace GameMaster.Bot.Mafia;
 
