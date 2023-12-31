@@ -5,6 +5,7 @@ using Discord.WebSocket;
 using GameMaster.Bot.Mafia;
 using GameMaster.Bot.Services.Mafia;
 using GameMaster.Shared;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -16,13 +17,15 @@ public class BotService : IHostedService
     private DiscordSocketClient Client { get; }
     private InteractionService InteractionService { get; }
     private MafiaControlService MafiaControls { get; }
+    private IConfiguration Configuration { get; }
     
-    public BotService(DataService data, DiscordSocketClient client, InteractionService interactionService, MafiaControlService mafiaControls)
+    public BotService(DataService data, DiscordSocketClient client, InteractionService interactionService, MafiaControlService mafiaControls, IConfiguration configuration)
     {
         Data = data;
         Client = client;
         InteractionService = interactionService;
         MafiaControls = mafiaControls;
+        Configuration = configuration;
     }
     
     public async Task StartAsync(CancellationToken cancellationToken)
@@ -35,7 +38,7 @@ public class BotService : IHostedService
 
         Client.Log += Log;
 
-        var token = ConfigurationManager.AppSettings["DiscordToken"];
+        var token = Configuration.GetValue<string>("DiscordToken");
 
         await Client.LoginAsync(TokenType.Bot, token);
         await Client.StartAsync();
