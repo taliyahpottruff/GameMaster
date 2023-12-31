@@ -1,6 +1,7 @@
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
+using GameMaster.Bot.Services.Mafia;
 using GameMaster.Models.Mafia;
 using GameMaster.Shared;
 
@@ -10,11 +11,13 @@ public class MafiaControls : InteractionModuleBase
 {
 	private readonly DiscordSocketClient _client;
 	private readonly DataService _db;
+	private MafiaControlService Service { get; }
 
-	public MafiaControls(DiscordSocketClient client, DataService db)
+	public MafiaControls(DiscordSocketClient client, DataService db, MafiaControlService service)
 	{
 		_client = client;
 		_db = db;
+		Service = service;
 	}
 
 	private async Task UpdateControlPanelMessage(MafiaGame game)
@@ -128,38 +131,19 @@ public class MafiaControls : InteractionModuleBase
 	[ComponentInteraction("createChannel")]
 	private async Task CreateChannel()
 	{
-		await DeferAsync(true);
+		await DeferAsync();
 
-		var game = await _db.GetMafiaGame(Context.Channel.Id);
-		if (game is null) return;
+		var game = await Service.CreateDayChat((ITextChannel)Context.Channel);
 
-		if (game.Channel > ulong.MinValue)
+		if (game is null)
 		{
-			await ModifyOriginalResponseAsync(x => x.Content = "There's already a primary game channel for this game!");
+			await RespondAsync("You are not allowed to do this");
 			return;
 		}
-
-		var guild = Context.Guild;
-        var category = ((SocketGuild)guild).CategoryChannels.First(x => x.Channels.FirstOrDefault(x => x.Id == Context.Channel.Id) is not null).Id;
-        var gameChannel = await guild.CreateTextChannelAsync(game.SanitizedName, x =>
-        {
-            x.PermissionOverwrites = new List<Overwrite>()
-            {
-                new Overwrite(guild.EveryoneRole.Id, PermissionTarget.Role, new OverwritePermissions(viewChannel: PermValue.Deny, sendMessages: PermValue.Deny, addReactions: PermValue.Deny)),
-                new Overwrite(_client.CurrentUser.Id, PermissionTarget.User, new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow, addReactions: PermValue.Allow)),
-                new Overwrite(Context.User.Id, PermissionTarget.User, new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow, addReactions: PermValue.Allow)),
-            };
-            x.CategoryId = category;
-        });
-
-		game.Channel = gameChannel.Id;
-		await _db.SetMafiaGameChannel(game.ControlPanel, game.Channel);
-
-		game.ChatStatus = MafiaGame.GameChatStatus.Unviewable;
-		await _db.SetMafiaGameChatStatus(game.ControlPanel, game.ChatStatus);
 		
 		await UpdateControlPanelMessage(game);
-    }
+		await RespondAsync("Created");
+	}
 
 	[ComponentInteraction("addPlayer:*")]
 	private async Task AddPlayerButton(string playerIdString)

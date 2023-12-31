@@ -14,7 +14,7 @@
 
     private async Task TestWebhook()
     {
-        var result = await Http.GetStringAsync("https://localhost:5002/Test");
+        var result = await Http.GetStringAsync("https://localhost:5002/api/WebHook");
         Console.WriteLine(result);
     }
     
