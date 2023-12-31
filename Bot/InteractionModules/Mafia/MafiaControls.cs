@@ -5,7 +5,7 @@ using GameMaster.Bot.Services.Mafia;
 using GameMaster.Shared;
 using GameMaster.Shared.Mafia;
 
-namespace GameMaster.Bot.Mafia;
+namespace GameMaster.Bot.InteractionModules.Mafia;
 
 public class MafiaControls : InteractionModuleBase
 {

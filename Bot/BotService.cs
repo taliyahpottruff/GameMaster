@@ -2,7 +2,7 @@
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
-using GameMaster.Bot.Mafia;
+using GameMaster.Bot.InteractionModules.Mafia;
 using GameMaster.Bot.Services.Mafia;
 using GameMaster.Shared;
 using Microsoft.Extensions.Configuration;
