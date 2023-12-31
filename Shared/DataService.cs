@@ -47,6 +47,18 @@ public class DataService
 		return result;
 	}
 
+	public async Task<MafiaGame?> GetMafiaGame(string id)
+	{
+		return await _mafiaCollection.Find(x => x._id == id).FirstOrDefaultAsync();
+	}
+
+	public async Task<List<MafiaGame>> GetAllMafiaGamesManagedByUser(ulong user)
+	{
+		var result = await _mafiaCollection.Find(x => x.GM == user).ToListAsync();
+
+		return result;
+	}
+
 	public async Task UpdateMafiaVotes(MafiaGame game)
 	{
 		var filter = Builders<MafiaGame>.Update.Set("Votes", game.Votes);

@@ -2,12 +2,12 @@
 
 public class State
 {
-    private string _discordId = String.Empty;
+    private ulong _discordId;
     private string _discordUsername = String.Empty;
     private string _discordDisplayName = String.Empty;
     private string _discordAvatar = string.Empty;
     
-    public string DiscordId { 
+    public ulong DiscordId { 
         get => _discordId;
         set
         {
@@ -46,7 +46,7 @@ public class State
         }
     }
 
-    public bool IsLoggedIn => DiscordId != String.Empty;
+    public bool IsLoggedIn => DiscordId > ulong.MinValue;
     
     public event Action? OnStateChanged;
 }

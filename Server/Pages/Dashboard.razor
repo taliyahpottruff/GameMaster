@@ -1,15 +1,31 @@
 ﻿@page "/dashboard"
+@using GameMaster.Shared
+@using GameMaster.Shared.Mafia
 @inject State State
 @inject HttpClient Http
+@inject DataService Data
 
 <h3>Dashboard</h3>
-@State.DiscordDisplayName
-<button @onclick="TestWebhook">Test Webhook</button>
+@if (Ready)
+{
+    <ul>
+        @foreach (var game in Games)
+        {
+            <li><a href="dashboard/mafia/@game._id">@game.Name</a></li>
+        }
+    </ul>
+}
 
 @code {
-    protected override void OnInitialized()
+    private bool Ready { get; set; } = false;
+    private List<MafiaGame> Games { get; set; } = new();
+    
+    protected override async Task OnInitializedAsync()
     {
         State.OnStateChanged += StateChanged;
+
+        Games = await Data.GetAllMafiaGamesManagedByUser(State.DiscordId);
+        Ready = true;
     }
 
     private async Task TestWebhook()

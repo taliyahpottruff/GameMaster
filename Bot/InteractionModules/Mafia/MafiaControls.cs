@@ -207,26 +207,15 @@ public class MafiaControls : InteractionModuleBase
 	[ComponentInteraction("chat:*")]
 	private async Task SetChat(string status)
 	{
-		bool open = status == "open";
+		
 		await DeferAsync();
 
-		var game = await _db.GetMafiaGame(Context.Channel.Id);
-		if (game is null) return;
+		var result = await Service.SetDayChat((ITextChannel)Context.Channel, status);
 
-		if (game.Channel == ulong.MinValue) return;
-		var guild = _client.GetGuild(game.Guild);
-		var channel = (ITextChannel)await _client.GetChannelAsync(game.Channel);
-
-		await channel.AddPermissionOverwriteAsync(guild.EveryoneRole, new OverwritePermissions(viewChannel: PermValue.Inherit, sendMessages: PermValue.Deny, addReactions: PermValue.Deny));
-		foreach (var playerId in game.Players)
-		{
-			var user = await _client.GetUserAsync(playerId);
-			await channel.AddPermissionOverwriteAsync(user, new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: open ? PermValue.Allow : PermValue.Deny, addReactions: PermValue.Inherit));
-		}
-		game.ChatStatus = open ? MafiaGame.GameChatStatus.Open : MafiaGame.GameChatStatus.Closed;
-		await _db.SetMafiaGameChatStatus(game.ControlPanel, game.ChatStatus);
-
-		await UpdateControlPanelMessage(game);
+		if (result.Success)
+			await UpdateControlPanelMessage((MafiaGame)result.Payload);
+		else
+			await RespondAsync(result.Payload.ToString());
 	}
 	#endregion
 

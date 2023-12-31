@@ -1,0 +1,91 @@
+﻿@page "/dashboard/mafia/{id}"
+@using GameMaster.Shared.Mafia
+@using GameMaster.Shared
+@using GameMaster.Bot.Services.Mafia
+@inject DataService Data
+@inject MafiaControlService ControlService
+
+@if (Ready)
+{
+    <h1>@Game.Name</h1>
+    <p>@Game.ChatStatus</p>
+    @if (Game.ChatStatus == MafiaGame.GameChatStatus.NotCreated)
+    {
+        <button @onclick="CreateDayChat" disabled="@_waitingForChannelAction">Create Day Chat</button>
+    }
+    else
+    {
+        if (Game.ChatStatus != MafiaGame.GameChatStatus.Open)
+        {
+            <button @onclick="OpenDayChat" disabled="@_waitingForChannelAction">Open Day Chat</button>
+        }
+        if (Game.ChatStatus != MafiaGame.GameChatStatus.Closed)
+        {
+            <button @onclick="CloseDayChat" disabled="@_waitingForChannelAction">Close Day Chat</button>
+        }
+    }
+}
+else if (NotFound)
+{
+    <p>That mafia game doesn't exist.</p>
+}
+else
+{
+    <p>Loading details... Please wait.</p>
+}
+
+@code {
+    [Parameter]
+    public string Id { get; set; } = string.Empty;
+
+    private MafiaGame Game { get; set; } = new();
+    private bool Ready { get; set; } = false;
+    private bool NotFound { get; set; } = false;
+    
+    private bool _waitingForChannelAction = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshGame();
+    }
+
+    private async Task RefreshGame()
+    {
+        var temp = await Data.GetMafiaGame(Id);
+
+        if (temp is null)
+        {
+            NotFound = true;
+            return;
+        }
+
+        Game = temp;
+        Ready = true;
+    }
+
+    private async Task CreateDayChat()
+    {
+        _waitingForChannelAction = true;
+        await ControlService.CreateDayChat(Game.ControlPanel);
+        await RefreshGame();
+        _waitingForChannelAction = false;
+    }
+
+    private async Task OpenDayChat()
+    {
+        _waitingForChannelAction = true;
+        var result = await ControlService.SetDayChat(Game.ControlPanel, "open");
+        if (result.Success)
+            await RefreshGame();
+        _waitingForChannelAction = false;
+    }
+    
+    private async Task CloseDayChat()
+    {
+        _waitingForChannelAction = true;
+        var result = await ControlService.SetDayChat(Game.ControlPanel, "closed");
+        if (result.Success)
+            await RefreshGame();
+        _waitingForChannelAction = false;
+    }
+}

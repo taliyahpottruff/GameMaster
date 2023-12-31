@@ -47,4 +47,46 @@ public class MafiaControlService
 
         return game;
     }
+
+    public async Task<MafiaGame?> CreateDayChat(ulong controlPanelChannel)
+    {
+        var channel = await Client.GetChannelAsync(controlPanelChannel) as ITextChannel;
+
+        if (channel is null)
+            return null;
+
+        return await CreateDayChat(channel);
+    }
+
+    public async Task<ServiceResult<object>> SetDayChat(ITextChannel controlPanelChannel, string status)
+    {
+        bool open = status == "open";
+        var game = await Data.GetMafiaGame(controlPanelChannel.Id);
+        if (game is null) return new ServiceResult<object>(false, "Game could not be found");
+
+        if (game.Channel == ulong.MinValue) return new ServiceResult<object>(false, "The day chat does not yet exist");
+        var guild = Client.GetGuild(game.Guild);
+        var channel = (ITextChannel)await Client.GetChannelAsync(game.Channel);
+
+        await channel.AddPermissionOverwriteAsync(guild.EveryoneRole, new OverwritePermissions(viewChannel: PermValue.Inherit, sendMessages: PermValue.Deny, addReactions: PermValue.Deny));
+        foreach (var playerId in game.Players)
+        {
+            var user = await Client.GetUserAsync(playerId);
+            await channel.AddPermissionOverwriteAsync(user, new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: open ? PermValue.Allow : PermValue.Deny, addReactions: PermValue.Inherit));
+        }
+        game.ChatStatus = open ? MafiaGame.GameChatStatus.Open : MafiaGame.GameChatStatus.Closed;
+        await Data.SetMafiaGameChatStatus(game.ControlPanel, game.ChatStatus);
+
+        return new ServiceResult<object>(true, game);
+    }
+
+    public async Task<ServiceResult<object>> SetDayChat(ulong controlPanelChannelId, string status)
+    {
+        var channel = await Client.GetChannelAsync(controlPanelChannelId) as ITextChannel;
+
+        if (channel is null)
+            return new ServiceResult<object>(false, "The supplied channel doesn't exist");
+
+        return await SetDayChat(channel, status);
+    }
 }

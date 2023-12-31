@@ -2,7 +2,7 @@
 @inject State State
 @implements IDisposable
 
-@if (State.DiscordId == String.Empty)
+@if (!State.IsLoggedIn)
 {
     <h1>GameMaster</h1>
     <h3>A discord bot for running games in your server</h3>
