@@ -12,6 +12,8 @@ public class DataService
 	private readonly IMongoCollection<MafiaGame> _mafiaCollection;
 	private readonly IMongoCollection<User> _userCollection;
 	private IConfiguration Configuration { get; }
+
+	private List<MafiaGame> _mafiaGameCache = new();
 	
 	public DataService(IConfiguration configuration)
 	{
@@ -22,6 +24,8 @@ public class DataService
 		var db = _client.GetDatabase("gamemaster");
 		_mafiaCollection = db.GetCollection<MafiaGame>("mafia-games");
 		_userCollection = db.GetCollection<User>("users");
+
+		_mafiaGameCache = _mafiaCollection.Find(x => true).ToList();
 	}
 
 	public async Task<bool> CreateNewMafiaGame(MafiaGame game)
@@ -32,6 +36,7 @@ public class DataService
 			return false;*/
 
 		await _mafiaCollection.InsertOneAsync(game);
+		_mafiaGameCache.Add(game);
 		return true;
 	}
 
@@ -43,19 +48,30 @@ public class DataService
 	/// <returns>The mafia game if it exists</returns>
 	public async Task<MafiaGame?> GetMafiaGame(ulong channel, bool allowGameChannel = true)
 	{
+		var cached = _mafiaGameCache.Find(x => (x.Channel == channel && true) || x.ControlPanel == channel);
+		if (cached is not null)
+			return cached;
 		var result = await _mafiaCollection.Find(x => (x.Channel == channel && true) || x.ControlPanel == channel).FirstOrDefaultAsync();
+		if (result is not null) _mafiaGameCache.Add(result);
 		return result;
 	}
 
 	public async Task<MafiaGame?> GetMafiaGame(string id)
 	{
-		return await _mafiaCollection.Find(x => x._id == id).FirstOrDefaultAsync();
+		var cached = _mafiaGameCache.Find(x => x._id == id);
+		if (cached is not null)
+			return cached;
+		var result =  await _mafiaCollection.Find(x => x._id == id).FirstOrDefaultAsync();
+		if (result is not null) _mafiaGameCache.Add(result);
+		return result;
 	}
 
 	public async Task<List<MafiaGame>> GetAllMafiaGamesManagedByUser(ulong user)
 	{
-		var result = await _mafiaCollection.Find(x => x.GM == user).ToListAsync();
+		var result = _mafiaGameCache.FindAll(x => x.GM == user);
+		//var result = await _mafiaCollection.Find(x => x.GM == user).ToListAsync();
 
+		await Task.Delay(0);
 		return result;
 	}
 

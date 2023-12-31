@@ -49,6 +49,9 @@ public class MafiaGame
 			return tally;
 		}
 	}
+	
+	[BsonIgnore]
+	public Action? GameUpdated { get; set; }
 
 	public string ChatStatusAsString()
 	{

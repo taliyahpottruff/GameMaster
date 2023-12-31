@@ -44,6 +44,7 @@ public class MafiaControlService
 
         game.ChatStatus = MafiaGame.GameChatStatus.Unviewable;
         await Data.SetMafiaGameChatStatus(game.ControlPanel, game.ChatStatus);
+        game.GameUpdated?.Invoke();
 
         return game;
     }
@@ -76,6 +77,7 @@ public class MafiaControlService
         }
         game.ChatStatus = open ? MafiaGame.GameChatStatus.Open : MafiaGame.GameChatStatus.Closed;
         await Data.SetMafiaGameChatStatus(game.ControlPanel, game.ChatStatus);
+        game.GameUpdated?.Invoke();
 
         return new ServiceResult<object>(true, game);
     }

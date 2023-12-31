@@ -2,6 +2,7 @@
 @using GameMaster.Shared.Mafia
 @using GameMaster.Shared
 @using GameMaster.Bot.Services.Mafia
+@implements IDisposable
 @inject DataService Data
 @inject MafiaControlService ControlService
 
@@ -47,6 +48,13 @@ else
     protected override async Task OnInitializedAsync()
     {
         await RefreshGame();
+        
+        Game.GameUpdated += GameUpdated;
+    }
+
+    private async void GameUpdated()
+    {
+        await InvokeAsync(StateHasChanged);
     }
 
     private async Task RefreshGame()
@@ -74,18 +82,20 @@ else
     private async Task OpenDayChat()
     {
         _waitingForChannelAction = true;
-        var result = await ControlService.SetDayChat(Game.ControlPanel, "open");
-        if (result.Success)
-            await RefreshGame();
+        await ControlService.SetDayChat(Game.ControlPanel, "open");
         _waitingForChannelAction = false;
     }
     
     private async Task CloseDayChat()
     {
         _waitingForChannelAction = true;
-        var result = await ControlService.SetDayChat(Game.ControlPanel, "closed");
-        if (result.Success)
-            await RefreshGame();
+        await ControlService.SetDayChat(Game.ControlPanel, "closed");
         _waitingForChannelAction = false;
     }
+
+    public void Dispose()
+    {
+        Game.GameUpdated -= GameUpdated;
+    }
+
 }
