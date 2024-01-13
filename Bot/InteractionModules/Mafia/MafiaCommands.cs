@@ -92,6 +92,7 @@ public class MafiaCommands : InteractionModuleBase
 			
 			// Update the DB
 			await db.UpdateMafiaGame(mafiaGame);
+			mafiaGame.Updated?.Invoke();
 			
 			// Inform the players of the new count
 			string tally = await FormatTally(client, mafiaGame);
@@ -112,6 +113,7 @@ public class MafiaCommands : InteractionModuleBase
 
 			mafiaGame.Votes.Remove(existingVote);
 			await db.UpdateMafiaGame(mafiaGame);
+			mafiaGame.Updated?.Invoke();
 			string tally = await FormatTally(client, mafiaGame);
 			await msg.Channel.SendMessageAsync(tally);
 		}

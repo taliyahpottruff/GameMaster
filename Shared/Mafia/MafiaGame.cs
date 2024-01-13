@@ -8,7 +8,17 @@ public class MafiaGame : IDocument
 {
 	[BsonId, BsonRepresentation(BsonType.ObjectId), BsonElement("_id")]
 	public string Id { get; set; } = string.Empty;
-	public string Name { get; set; } = string.Empty;
+
+	public string Name
+	{
+		get => _name;
+		set
+		{
+			_name = value;
+			Updated?.Invoke();
+		}
+	}
+
 	public string SanitizedName { get; set; } = string.Empty;
 	public ulong Guild { get; set; }
 	public ulong ControlPanel { get; set; }
@@ -16,17 +26,79 @@ public class MafiaGame : IDocument
 	/// <summary>
 	/// The primary game chat. Also known as a "day chat"
 	/// </summary>
-	public ulong Channel { get; set; }
+	public ulong Channel { 
+		get => _channel;
+		set
+		{
+			_channel = value;
+			Updated?.Invoke();
+		} 
+	}
 	/// <summary>
 	/// Any additional channels including scum chats
 	/// </summary>
-	public GameChatStatus ChatStatus { get; set; }
-	public List<ulong> GameChannels { get; set; } = new();
-	public ulong GM { get; set; }
-	public List<ulong> Players { get; set; } = new();
-	public bool VotingOpen { get; set; }
-	public List<Vote> Votes { get; set; } = new();
+	public GameChatStatus ChatStatus { 
+		get => _chatStatus;
+		set
+		{
+			_chatStatus = value;
+			Updated?.Invoke();
+		} 
+	}
 
+	public List<ulong> GameChannels
+	{
+		get => _gameChannels;
+		set
+		{
+			_gameChannels.Clear();
+			_gameChannels.AddRange(value);
+			Updated?.Invoke();
+		}
+	}
+
+	public ulong GM { get; set; }
+
+	public List<ulong> Players
+	{
+		get => _players;
+		set
+		{
+			_players.Clear();
+			_players.AddRange(value);
+			Updated?.Invoke();
+		}
+	}
+
+	public bool VotingOpen
+	{
+		get => _votingOpen;
+		set
+		{
+			_votingOpen = value;
+			Updated?.Invoke();
+		}
+	}
+
+	public List<Vote> Votes
+	{
+		get => _votes;
+		set
+		{
+			_votes.Clear();
+			_votes.AddRange(value);
+			Updated?.Invoke();
+		}
+	}
+
+	private string _name = string.Empty;
+	private ulong _channel;
+	private GameChatStatus _chatStatus;
+	private List<ulong> _gameChannels = new();
+	private List<ulong> _players = new();
+	private bool _votingOpen;
+	private List<Vote> _votes = new();
+	
 	[BsonIgnore]
 	public Dictionary<ulong, List<ulong>> Tally
 	{
@@ -50,7 +122,7 @@ public class MafiaGame : IDocument
 	}
 	
 	[BsonIgnore]
-	public Action? GameUpdated { get; set; }
+	public Action? Updated { get; set; }
 
 	public string ChatStatusAsString()
 	{
@@ -66,7 +138,7 @@ public class MafiaGame : IDocument
 
 	public class Vote
 	{
-		public ulong From { get; set; }
+		public ulong From { get; init; }
 		public ulong Against { get; set; }
 	}
 

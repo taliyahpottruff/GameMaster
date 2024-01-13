@@ -106,6 +106,7 @@ public class DataService
 			return false;
 		
 		game.Players.Add(player);
+		game.Updated?.Invoke();
 		await _mafiaCollection.Update(game);
 		return true;
 	}
@@ -118,6 +119,7 @@ public class DataService
 			return false;
 		
 		game.Players.Remove(player);
+		game.Updated?.Invoke();
 		await _mafiaCollection.Update(game);
 		return true;
 	}

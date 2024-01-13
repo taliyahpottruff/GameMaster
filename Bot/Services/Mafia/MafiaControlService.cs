@@ -44,7 +44,7 @@ public class MafiaControlService
 
         game.ChatStatus = MafiaGame.GameChatStatus.Unviewable;
         await Data.SetMafiaGameChatStatus(game.ControlPanel, game.ChatStatus);
-        game.GameUpdated?.Invoke();
+        game.Updated?.Invoke();
 
         return game;
     }
@@ -77,7 +77,7 @@ public class MafiaControlService
         }
         game.ChatStatus = open ? MafiaGame.GameChatStatus.Open : MafiaGame.GameChatStatus.Closed;
         await Data.SetMafiaGameChatStatus(game.ControlPanel, game.ChatStatus);
-        game.GameUpdated?.Invoke();
+        game.Updated?.Invoke();
 
         return new ServiceResult<object>(true, game);
     }
@@ -90,5 +90,23 @@ public class MafiaControlService
             return new ServiceResult<object>(false, "The supplied channel doesn't exist");
 
         return await SetDayChat(channel, status);
+    }
+
+    public List<IGuildUser> GetResolvedPlayerList(string gameId)
+    {
+        List<IGuildUser> list = new();
+        var game = Data.GetMafiaGame(gameId);
+
+        if (game is null)
+            return list;
+
+        var guild = Client.GetGuild(game.Guild);
+        foreach (var playerId in game.Players)
+        {
+            var user = guild.GetUser(playerId);
+            list.Add(user);
+        }
+
+        return list;
     }
 }

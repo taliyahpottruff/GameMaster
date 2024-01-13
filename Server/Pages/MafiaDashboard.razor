@@ -2,6 +2,7 @@
 @using GameMaster.Shared.Mafia
 @using GameMaster.Shared
 @using GameMaster.Bot.Services.Mafia
+@using Discord
 @implements IDisposable
 @inject DataService Data
 @inject MafiaControlService ControlService
@@ -9,6 +10,14 @@
 @if (Ready)
 {
     <h1>@Game.Name</h1>
+    <h3>Players</h3>
+    <ul>
+        @foreach (var player in _resolvedPlayers)
+        {
+            <li>@player.DisplayName</li>
+        }
+    </ul>
+    <h3>Day Chat Status</h3>
     <p>@Game.ChatStatus</p>
     @if (Game.ChatStatus == MafiaGame.GameChatStatus.NotCreated)
     {
@@ -42,18 +51,27 @@ else
     private MafiaGame Game { get; set; } = new();
     private bool Ready { get; set; } = false;
     private bool NotFound { get; set; } = false;
-    
+
+    private List<IGuildUser> _resolvedPlayers = new();
     private bool _waitingForChannelAction = false;
 
     protected override void OnInitialized()
     {
         RefreshGame();
+        DoExtra();
         
-        Game.GameUpdated += GameUpdated;
+        Game.Updated += GameUpdated;
     }
 
+    private void DoExtra()
+    {
+        _resolvedPlayers.Clear();
+        _resolvedPlayers = ControlService.GetResolvedPlayerList(Game.Id);
+    }
+    
     private async void GameUpdated()
     {
+        DoExtra();
         await InvokeAsync(StateHasChanged);
     }
 
@@ -95,7 +113,7 @@ else
 
     public void Dispose()
     {
-        Game.GameUpdated -= GameUpdated;
+        Game.Updated -= GameUpdated;
     }
 
 }

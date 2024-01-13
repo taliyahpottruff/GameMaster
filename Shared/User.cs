@@ -6,7 +6,40 @@ namespace GameMaster.Shared;
 public class User : IDocument
 {
     [BsonId, BsonRepresentation(BsonType.ObjectId), BsonElement("_id")]
-    public string Id { get; set; } = string.Empty;
-    public ulong DiscordId { get; set; }
-    public string RefreshToken { get; set; } = string.Empty;
+    public string Id
+    {
+        get => _id;
+        set
+        {
+            _id = value;
+            Updated?.Invoke();
+        }
+    }
+
+    public ulong DiscordId
+    {
+        get => _discordId;
+        set
+        {
+            _discordId = value;
+            Updated?.Invoke();
+        }
+    }
+
+    public string RefreshToken
+    {
+        get => _refreshToken;
+        set
+        {
+            _refreshToken = value;
+            Updated?.Invoke();
+        }
+    }
+
+    private string _id = string.Empty;
+    private ulong _discordId = ulong.MinValue;
+    private string _refreshToken = string.Empty;
+    
+    [BsonIgnore]
+    public Action? Updated { get; set; }
 }

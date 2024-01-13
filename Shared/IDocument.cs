@@ -6,4 +6,5 @@ namespace GameMaster.Shared;
 public interface IDocument
 {
     public string Id { get; set; }
+    public Action? Updated { get; set; }
 }

@@ -159,7 +159,6 @@ public class MafiaControls : InteractionModuleBase
 
 		var success = await _db.AddPlayerToMafiaGame(Context.Channel.Id, playerId);
 		if (!success) return;
-        game.Players.Add(playerId);
         var gameChannel = await Context.Guild.GetTextChannelAsync(game.Channel);
 		var guildUser = await Context.Guild.GetUserAsync(playerId);
 		if (game.Channel > ulong.MinValue)
