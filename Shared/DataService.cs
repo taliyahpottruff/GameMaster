@@ -9,11 +9,9 @@ public class DataService
 {
 	private MongoClient _client;
 
-	private readonly IMongoCollection<MafiaGame> _mafiaCollection;
-	private readonly IMongoCollection<User> _userCollection;
+	private readonly CollectionManager<MafiaGame> _mafiaCollection;
+	private readonly CollectionManager<User> _userCollection;
 	private IConfiguration Configuration { get; }
-
-	private List<MafiaGame> _mafiaGameCache = new();
 	
 	public DataService(IConfiguration configuration)
 	{
@@ -22,21 +20,13 @@ public class DataService
 		_client = new MongoClient(connectionString);
 
 		var db = _client.GetDatabase("gamemaster");
-		_mafiaCollection = db.GetCollection<MafiaGame>("mafia-games");
-		_userCollection = db.GetCollection<User>("users");
-
-		_mafiaGameCache = _mafiaCollection.Find(x => true).ToList();
+		_mafiaCollection = new CollectionManager<MafiaGame>(db, "mafia-games");
+		_userCollection = new CollectionManager<User>(db, "users");
 	}
 
 	public async Task<bool> CreateNewMafiaGame(MafiaGame game)
 	{
-		/*var count = await _mafiaCollection.CountDocumentsAsync(x => x.Guild == game.Guild && x.Channel == game.Channel);
-
-		if (count > 0)
-			return false;*/
-
-		await _mafiaCollection.InsertOneAsync(game);
-		_mafiaGameCache.Add(game);
+		await _mafiaCollection.Add(game);
 		return true;
 	}
 
@@ -46,48 +36,40 @@ public class DataService
 	/// <param name="channel">ID of the control panel or game channel (if allowed)</param>
 	/// <param name="allowGameChannel">Allow finding by the game channel</param>
 	/// <returns>The mafia game if it exists</returns>
-	public async Task<MafiaGame?> GetMafiaGame(ulong channel, bool allowGameChannel = true)
+	public MafiaGame? GetMafiaGame(ulong channel, bool allowGameChannel = true)
 	{
-		var cached = _mafiaGameCache.Find(x => (x.Channel == channel && true) || x.ControlPanel == channel);
-		if (cached is not null)
-			return cached;
-		var result = await _mafiaCollection.Find(x => (x.Channel == channel && true) || x.ControlPanel == channel).FirstOrDefaultAsync();
-		if (result is not null) _mafiaGameCache.Add(result);
+		var result = _mafiaCollection.Find(x => (x.Channel == channel && allowGameChannel) || x.ControlPanel == channel);
 		return result;
 	}
 
-	public async Task<MafiaGame?> GetMafiaGame(string id)
+	public MafiaGame? GetMafiaGame(string id)
 	{
-		var cached = _mafiaGameCache.Find(x => x._id == id);
-		if (cached is not null)
-			return cached;
-		var result =  await _mafiaCollection.Find(x => x._id == id).FirstOrDefaultAsync();
-		if (result is not null) _mafiaGameCache.Add(result);
+		var result = _mafiaCollection.Find(x => x.Id == id);
 		return result;
 	}
 
-	public async Task<List<MafiaGame>> GetAllMafiaGamesManagedByUser(ulong user)
+	public List<MafiaGame> GetAllMafiaGamesManagedByUser(ulong user)
 	{
-		var result = _mafiaGameCache.FindAll(x => x.GM == user);
-		//var result = await _mafiaCollection.Find(x => x.GM == user).ToListAsync();
-
-		await Task.Delay(0);
+		var result = _mafiaCollection.FindAll(x => x.GM == user);
 		return result;
 	}
 
-	public async Task UpdateMafiaVotes(MafiaGame game)
+	public async Task UpdateMafiaGame(MafiaGame game)
 	{
-		var filter = Builders<MafiaGame>.Update.Set("Votes", game.Votes);
-		await _mafiaCollection.UpdateOneAsync(x => x.Guild == game.Guild && x.Channel == game.Channel,
-			filter);
+		await _mafiaCollection.Update(game);
 	}
 
 	public async Task SetMafiaGameChannel(ulong controlPanel, ulong channel)
 	{
-		var update = Builders<MafiaGame>.Update.Set("Channel", channel);
-		await _mafiaCollection.UpdateOneAsync(x => x.ControlPanel == controlPanel, update);
+		var game = _mafiaCollection.Find(x => x.ControlPanel == controlPanel);
+		
+		if (game is null)
+			return;
+		
+		game.Channel = channel;
+		await _mafiaCollection.Update(game);
 	}
-
+	
 	/// <summary>
 	/// Set the game chat status
 	/// </summary>
@@ -95,46 +77,61 @@ public class DataService
 	/// <param name="status">The status you want to set</param>
 	public async Task SetMafiaGameChatStatus(ulong channel, MafiaGame.GameChatStatus status)
 	{
-		var update = Builders<MafiaGame>.Update.Set("ChatStatus", status);
-		await _mafiaCollection.UpdateOneAsync(x => x.ControlPanel == channel || x.Channel == channel, update);
+		var game = _mafiaCollection.Find(x => x.ControlPanel == channel || x.Channel == channel);
+		
+		if (game is null)
+			return;
+
+		game.ChatStatus = status;
+		await _mafiaCollection.Update(game);
 	}
 
 	public async Task<bool> DeleteMafiaGame(ulong channel)
 	{
-		var result = await _mafiaCollection.DeleteManyAsync(x => x.Channel == channel || x.ControlPanel == channel);
-		return result.DeletedCount > 0;
+		var result = await _mafiaCollection.Delete(x => x.Channel == channel || x.ControlPanel == channel);
+		return result > 0;
 	}
 
-	public async Task<bool> MafiaGameExists(ulong channel)
+	public bool MafiaGameExists(ulong channel, bool gameChannelAllowed = true)
 	{
-		var count = await _mafiaCollection.CountDocumentsAsync(x => x.Channel == channel);
-		return count > 0;
+		var game = _mafiaCollection.Find(x => (x.Channel == channel && gameChannelAllowed) || x.ControlPanel == channel);
+		return game is not null;
 	}
 
 	public async Task<bool> AddPlayerToMafiaGame(ulong controlPanel, ulong player)
 	{
-		var update = Builders<MafiaGame>.Update.AddToSet("Players", player);
-		var count = await _mafiaCollection.UpdateOneAsync(x => x.ControlPanel == controlPanel, update);
-		return count.MatchedCount > 0;
+		var game = _mafiaCollection.Find(x => x.ControlPanel == controlPanel);
+
+		if (game is null)
+			return false;
+		
+		game.Players.Add(player);
+		await _mafiaCollection.Update(game);
+		return true;
 	}
 	
 	public async Task<bool> RemovePlayerFromMafiaGame(ulong controlPanel, ulong player)
 	{
-		var update = Builders<MafiaGame>.Update.Pull("Players", player);
-		var count = await _mafiaCollection.UpdateOneAsync(x => x.ControlPanel == controlPanel, update);
-		return count.MatchedCount > 0;
+		var game = _mafiaCollection.Find(x => x.ControlPanel == controlPanel);
+
+		if (game is null)
+			return false;
+		
+		game.Players.Remove(player);
+		await _mafiaCollection.Update(game);
+		return true;
 	}
 
 	#region User
 
 	public async Task<bool> AddUser(ulong discordId, string refreshToken)
 	{
-		var existing = await _userCollection.Find(x => x.DiscordId == discordId).FirstOrDefaultAsync();
+		var existing = _userCollection.Find(x => x.DiscordId == discordId);
 
 		if (existing is not null)
 			return false;
 
-		await _userCollection.InsertOneAsync(new User()
+		await _userCollection.Add(new User()
 		{
 			DiscordId = discordId,
 			RefreshToken = refreshToken,

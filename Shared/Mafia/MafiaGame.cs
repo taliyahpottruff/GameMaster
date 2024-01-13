@@ -4,11 +4,10 @@ using MongoDB.Bson.Serialization.Attributes;
 namespace GameMaster.Shared.Mafia;
 
 [Serializable]
-public class MafiaGame
+public class MafiaGame : IDocument
 {
-	[BsonId]
-	[BsonRepresentation(BsonType.ObjectId)]
-	public string _id { get; set; } = string.Empty;
+	[BsonId, BsonRepresentation(BsonType.ObjectId), BsonElement("_id")]
+	public string Id { get; set; } = string.Empty;
 	public string Name { get; set; } = string.Empty;
 	public string SanitizedName { get; set; } = string.Empty;
 	public ulong Guild { get; set; }

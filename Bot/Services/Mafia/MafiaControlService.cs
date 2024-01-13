@@ -18,7 +18,7 @@ public class MafiaControlService
 
     public async Task<MafiaGame?> CreateDayChat(ITextChannel controlPanelChannel)
     {
-        var game = await Data.GetMafiaGame(controlPanelChannel.Id);
+        var game = Data.GetMafiaGame(controlPanelChannel.Id);
         if (game is null) return null;
 
         if (game.Channel > ulong.MinValue)
@@ -62,7 +62,7 @@ public class MafiaControlService
     public async Task<ServiceResult<object>> SetDayChat(ITextChannel controlPanelChannel, string status)
     {
         bool open = status == "open";
-        var game = await Data.GetMafiaGame(controlPanelChannel.Id);
+        var game = Data.GetMafiaGame(controlPanelChannel.Id);
         if (game is null) return new ServiceResult<object>(false, "Game could not be found");
 
         if (game.Channel == ulong.MinValue) return new ServiceResult<object>(false, "The day chat does not yet exist");

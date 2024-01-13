@@ -27,7 +27,7 @@ public class MafiaCommands : InteractionModuleBase
 		var content = msg.CleanContent;
 		if (content.ToLower().StartsWith("lynch"))
 		{
-			var mafiaGame = await db.GetMafiaGame(msg.Channel.Id);
+			var mafiaGame = db.GetMafiaGame(msg.Channel.Id);
 			if (mafiaGame is null)
 				return;
 
@@ -91,7 +91,7 @@ public class MafiaCommands : InteractionModuleBase
 			}
 			
 			// Update the DB
-			await db.UpdateMafiaVotes(mafiaGame);
+			await db.UpdateMafiaGame(mafiaGame);
 			
 			// Inform the players of the new count
 			string tally = await FormatTally(client, mafiaGame);
@@ -99,7 +99,7 @@ public class MafiaCommands : InteractionModuleBase
 		}
 		else if (content.ToLower().StartsWith("unlynch"))
 		{
-			var mafiaGame = await db.GetMafiaGame(msg.Channel.Id);
+			var mafiaGame = db.GetMafiaGame(msg.Channel.Id);
 			if (mafiaGame is null)
 				return;
 
@@ -111,7 +111,7 @@ public class MafiaCommands : InteractionModuleBase
 				return;
 
 			mafiaGame.Votes.Remove(existingVote);
-			await db.UpdateMafiaVotes(mafiaGame);
+			await db.UpdateMafiaGame(mafiaGame);
 			string tally = await FormatTally(client, mafiaGame);
 			await msg.Channel.SendMessageAsync(tally);
 		}
@@ -166,7 +166,7 @@ public class MafiaCommands : InteractionModuleBase
 	{
 		await DeferAsync(true);
 
-		var game = await _db.GetMafiaGame(Context.Channel.Id);
+		var game = _db.GetMafiaGame(Context.Channel.Id);
 
 		if (game is null)
 		{
@@ -197,7 +197,7 @@ public class MafiaCommands : InteractionModuleBase
 	{
 		await DeferAsync(true);
 
-		var game = await _db.GetMafiaGame(Context.Channel.Id);
+		var game = _db.GetMafiaGame(Context.Channel.Id);
 
 		if (game is null)
 		{
@@ -212,7 +212,7 @@ public class MafiaCommands : InteractionModuleBase
 		}
 		
 		game.Votes.Clear();
-		await _db.UpdateMafiaVotes(game);
+		await _db.UpdateMafiaGame(game);
 		await ModifyOriginalResponseAsync(x => x.Content = "The count has been reset");
 	}
 
@@ -221,7 +221,7 @@ public class MafiaCommands : InteractionModuleBase
 	{
 		await DeferAsync();
 
-		var game = await _db.GetMafiaGame(Context.Channel.Id);
+		var game = _db.GetMafiaGame(Context.Channel.Id);
 
 		if (game is null)
 		{

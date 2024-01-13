@@ -3,7 +3,7 @@ using MongoDB.Bson.Serialization.Attributes;
 
 namespace GameMaster.Shared;
 
-public class User
+public class User : IDocument
 {
     [BsonId, BsonRepresentation(BsonType.ObjectId), BsonElement("_id")]
     public string Id { get; set; } = string.Empty;

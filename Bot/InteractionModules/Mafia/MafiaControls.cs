@@ -63,7 +63,7 @@ public class MafiaControls : InteractionModuleBase
 	{
 		await DeferAsync();
 		
-		var game = await _db.GetMafiaGame(Context.Channel.Id);
+		var game = _db.GetMafiaGame(Context.Channel.Id);
 		bool success = await _db.DeleteMafiaGame(Context.Channel.Id);
 
 		if (!success || game is null)
@@ -154,7 +154,7 @@ public class MafiaControls : InteractionModuleBase
 
 		await DeferAsync(true);
 
-		var game = await _db.GetMafiaGame(Context.Channel.Id);
+		var game = _db.GetMafiaGame(Context.Channel.Id);
 		if (game is null) return;
 
 		var success = await _db.AddPlayerToMafiaGame(Context.Channel.Id, playerId);
@@ -180,7 +180,7 @@ public class MafiaControls : InteractionModuleBase
 
 		await DeferAsync(true);
 
-		var game = await _db.GetMafiaGame(Context.Channel.Id);
+		var game = _db.GetMafiaGame(Context.Channel.Id);
 		if (game is null) return;
 
 		var success = await _db.RemovePlayerFromMafiaGame(Context.Channel.Id, playerId);
@@ -226,7 +226,7 @@ public class MafiaControls : InteractionModuleBase
 	{
 		await DeferAsync();
 
-		var game = await _db.GetMafiaGame(Context.Channel.Id, false);
+		var game = _db.GetMafiaGame(Context.Channel.Id, false);
         if (game is null)
         {
 			await ModifyOriginalResponseAsync(x => x.Content = "You can only use this command in a game of mafia");
@@ -260,7 +260,7 @@ public class MafiaControls : InteractionModuleBase
 	{
 		await DeferAsync();
 
-		var game = await _db.GetMafiaGame(Context.Channel.Id, false);
+		var game = _db.GetMafiaGame(Context.Channel.Id, false);
 		if (game is null)
 		{
 			await ModifyOriginalResponseAsync(x => x.Content = "You can only use this command in a game of mafia");

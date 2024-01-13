@@ -11,7 +11,10 @@
     <ul>
         @foreach (var game in Games)
         {
-            <li><a href="dashboard/mafia/@game._id">@game.Name</a></li>
+            @if (string.IsNullOrEmpty(game.Name))
+                continue;
+            
+            <li><a href="dashboard/mafia/@game.Id">@game.Name</a></li>
         }
     </ul>
 }
@@ -20,18 +23,12 @@
     private bool Ready { get; set; } = false;
     private List<MafiaGame> Games { get; set; } = new();
     
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
     {
         State.OnStateChanged += StateChanged;
 
-        Games = await Data.GetAllMafiaGamesManagedByUser(State.DiscordId);
+        Games = Data.GetAllMafiaGamesManagedByUser(State.DiscordId);
         Ready = true;
-    }
-
-    private async Task TestWebhook()
-    {
-        var result = await Http.GetStringAsync("https://localhost:5002/api/WebHook");
-        Console.WriteLine(result);
     }
     
     public void Dispose()

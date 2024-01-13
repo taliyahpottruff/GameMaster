@@ -45,9 +45,9 @@ else
     
     private bool _waitingForChannelAction = false;
 
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
     {
-        await RefreshGame();
+        RefreshGame();
         
         Game.GameUpdated += GameUpdated;
     }
@@ -57,9 +57,9 @@ else
         await InvokeAsync(StateHasChanged);
     }
 
-    private async Task RefreshGame()
+    private void RefreshGame()
     {
-        var temp = await Data.GetMafiaGame(Id);
+        var temp = Data.GetMafiaGame(Id);
 
         if (temp is null)
         {
@@ -75,7 +75,7 @@ else
     {
         _waitingForChannelAction = true;
         await ControlService.CreateDayChat(Game.ControlPanel);
-        await RefreshGame();
+        RefreshGame();
         _waitingForChannelAction = false;
     }
 
