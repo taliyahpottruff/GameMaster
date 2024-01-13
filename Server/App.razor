@@ -1,13 +1,15 @@
 ﻿@using System.Net.Http.Headers
+@using MongoDB.Driver.Core.Servers
 @using Newtonsoft.Json.Linq
 @inject HttpClient Http
 @inject State State
+@inject NavigationManager Nav
 
 @if (Ready)
 {
     <CascadingValue Name="AccessToken" Value="AccessToken">
         <CascadingAuthenticationState>
-            <Router AppAssembly="@typeof(App).Assembly">
+            <Router AppAssembly="@typeof(App).Assembly" OnNavigateAsync="OnNav">
                 <Found Context="routeData">
                     <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)"/>
                     <FocusOnNavigate RouteData="@routeData" Selector="h1"/>
@@ -49,5 +51,11 @@
         }
 
         Ready = true;
+    }
+
+    private void OnNav(NavigationContext ctx)
+    {
+        if (!State.IsLoggedIn && ctx.Path.StartsWith("dashboard") && Nav is not null)
+            Nav.NavigateTo("/");
     }
 }
