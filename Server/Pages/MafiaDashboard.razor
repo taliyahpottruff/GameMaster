@@ -12,7 +12,9 @@
     <button class="px-2 py-1 bg-red-500 rounded-sm hover:bg-indigo-500 float-right inline-flex items-center font-semibold">End Game</button>
     <h1 class="text-2xl font-bold mb-2">@Game.Name</h1>
     <div class="mb-2">
-        <h3 class="text-xl font-bold">Players</h3>
+        
+        <h3 class="text-xl font-bold">Players <button class="text-sm font-normal bg-green-600 px-1 rounded-sm ml-1" @onclick="() => _addPlayerModalShowing = true">Add</button></h3>
+        
         <ul>
             @if (_resolvedPlayers.Count > 0)
             {
@@ -46,6 +48,21 @@
             }
         }
     </div>
+    
+    @if (_addPlayerModalShowing)
+    {
+        <div class="fixed top-0 left-0 right-0 bottom-0 flex items-center bg-gray-900/50">
+            <div class="bg-slate-700 rounded-lg w-10/12 h-4/6 md:w-6/12 mx-auto my-auto">
+                <button class="float-right text-2xl font-semibold pt-3 px-4" @onclick="() => _addPlayerModalShowing = false">X</button>
+                <div class="p-4">
+                    <span class="font-bold text-2xl">Add a player</span>
+                    <EditForm Model="SearchModel">
+                        <InputText @bind-Value="SearchModel.DisplayName" class="bg-slate-800 text-xl p-2 my-2 w-full rounded-md" placeholder="Display name.."></InputText>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    }
 }
 else if (NotFound)
 {
@@ -63,10 +80,13 @@ else
     private MafiaGame Game { get; set; } = new();
     private bool Ready { get; set; } = false;
     private bool NotFound { get; set; } = false;
+    private UserSearch SearchModel { get; set; } = new();
 
     private List<IGuildUser> _resolvedPlayers = new();
     private bool _waitingForChannelAction = false;
-
+    private bool _addPlayerModalShowing;
+    private string _addPlayerField = string.Empty;
+    
     protected override void OnInitialized()
     {
         RefreshGame();
@@ -128,4 +148,8 @@ else
         Game.Updated -= GameUpdated;
     }
 
+    public class UserSearch
+    {
+        public string DisplayName { get; set; } = string.Empty;
+    }
 }
