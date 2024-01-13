@@ -5,7 +5,7 @@
 @inject HttpClient Http
 @inject DataService Data
 
-<h3>Dashboard</h3>
+<h3 class="text-2xl font-bold mb-2">Dashboard</h3>
 @if (Ready)
 {
     <ul>
@@ -14,7 +14,7 @@
             @if (string.IsNullOrEmpty(game.Name))
                 continue;
             
-            <li><a href="dashboard/mafia/@game.Id">@game.Name</a></li>
+            <li><a href="dashboard/mafia/@game.Id" class="text-blue-400 hover:underline hover:underline-offset-1">@game.Name</a></li>
         }
     </ul>
 }
