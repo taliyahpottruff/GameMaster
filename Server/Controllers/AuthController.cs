@@ -47,7 +47,7 @@ public class AuthController : Controller
         if (response is null)
             return StatusCode(500);
 
-        Response.Cookies.Append("access-token", response.AccessToken, new CookieOptions() { Expires = DateTimeOffset.Now.AddSeconds(response.ExpiresIn), Secure = true });
+        Response.Cookies.Append("access-token", response.AccessToken, new CookieOptions() { Expires = DateTimeOffset.Now.AddSeconds(response.ExpiresIn), Secure = true, HttpOnly = true });
 
         _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", response.AccessToken);
         var userInfoString = await _http.GetStringAsync("https://discord.com/api/users/@me");
