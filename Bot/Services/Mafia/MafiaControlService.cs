@@ -109,4 +109,23 @@ public class MafiaControlService
 
         return list;
     }
+
+    public async Task<IEnumerable<IGuildUser>> GetAllGuildUsers(MafiaGame game)
+    {
+        var guild = Client.GetGuild(game.Guild);
+        return await guild.GetUsersAsync().FlattenAsync();
+    }
+
+    public async Task<ServiceResult<string>> AddPlayerToGame(MafiaGame game, ulong playerId)
+    {
+        var guild = (IGuild)Client.GetGuild(game.Guild);
+        var success = await Data.AddPlayerToMafiaGame(game.ControlPanel, playerId);
+        if (!success) return new ServiceResult<string>(false, "Player already is in the game");
+        var gameChannel = await guild.GetTextChannelAsync(game.Channel);
+        var guildUser = await guild.GetUserAsync(playerId);
+        if (game.Channel > ulong.MinValue)
+            await gameChannel.AddPermissionOverwriteAsync(guildUser, new OverwritePermissions(viewChannel: (game.ChatStatus != MafiaGame.GameChatStatus.Unviewable) ? PermValue.Allow : PermValue.Deny, sendMessages: (game.ChatStatus == MafiaGame.GameChatStatus.Open) ? PermValue.Allow : PermValue.Deny, addReactions: PermValue.Inherit));
+
+        return new ServiceResult<string>(true, "Successfully added player");
+    }
 }

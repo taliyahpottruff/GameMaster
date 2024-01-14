@@ -157,14 +157,14 @@ public class MafiaControls : InteractionModuleBase
 		var game = _db.GetMafiaGame(Context.Channel.Id);
 		if (game is null) return;
 
-		var success = await _db.AddPlayerToMafiaGame(Context.Channel.Id, playerId);
-		if (!success) return;
-        var gameChannel = await Context.Guild.GetTextChannelAsync(game.Channel);
-		var guildUser = await Context.Guild.GetUserAsync(playerId);
-		if (game.Channel > ulong.MinValue)
-			await gameChannel.AddPermissionOverwriteAsync(guildUser, new OverwritePermissions(viewChannel: (game.ChatStatus != MafiaGame.GameChatStatus.Unviewable) ? PermValue.Allow : PermValue.Deny, sendMessages: (game.ChatStatus == MafiaGame.GameChatStatus.Open) ? PermValue.Allow : PermValue.Deny, addReactions: PermValue.Inherit));
+		var result = await Service.AddPlayerToGame(game, playerId);
 
-        // Update control panel message
+		if (!result.Success)
+		{
+			await RespondAsync(result.Payload);
+		}
+
+		// Update control panel message
         await UpdateControlPanelMessage(game);
 
         await DeleteOriginalResponseAsync();
