@@ -6,10 +6,11 @@
 @implements IDisposable
 @inject DataService Data
 @inject MafiaControlService ControlService
+@inject NavigationManager Nav
 
 @if (Ready)
 {
-    <button class="px-2 py-1 bg-red-500 rounded-sm hover:bg-indigo-500 float-right inline-flex items-center font-semibold">End Game</button>
+    <button class="px-2 py-1 bg-red-500 rounded-sm hover:bg-red-400 float-right inline-flex items-center font-semibold" @onclick="() => _endGameModalShowing = true">End Game</button>
     <h1 class="text-2xl font-bold mb-2">@Game.Name</h1>
     <div class="mb-2">
         
@@ -49,26 +50,40 @@
         }
     </div>
     
-    @if (_addPlayerModalShowing)
+    @if (_addPlayerModalShowing || _endGameModalShowing)
     {
         <div class="fixed top-0 left-0 right-0 bottom-0 flex items-center bg-gray-900/50">
-            <div class="bg-slate-700 rounded-lg relative w-10/12 h-4/6 sm:w-96 mx-auto my-auto">
-                <button class="absolute top-0 right-0 text-2xl font-semibold pt-3 px-4" @onclick="() => _addPlayerModalShowing = false">X</button>
-                <div class="p-4 flex flex-col h-full">
-                    <span class="font-bold text-2xl">Add a player</span>
-                    <input value="@_addPlayerField" @oninput="UpdatePlayerSearch" class="bg-slate-800 text-xl p-2 my-2 w-full rounded-md" placeholder="Display name..."/>
-                    <div class="bg-slate-800 flex-1 rounded-lg overflow-scroll">
-                        @foreach (var user in _guildUserSearch)
-                        {
-                            <button class="relative w-full h-24 p-2 hover:bg-slate-600 inline-flex items-center disabled:bg-slate-500" disabled="@user.Selected" @onclick="() => SelectUser(user)">
-                                <img src="@user.AvatarUrl" class="rounded-full w-20 h-20" alt="@user.DisplayName" />
-                                <span class="text-2xl w-full text-center">@user.DisplayName</span>
-                            </button>
-                        }
+            @if (_addPlayerModalShowing)
+            {
+                <div class="bg-slate-700 rounded-lg relative w-10/12 h-4/6 sm:w-96 mx-auto my-auto">
+                    <button class="absolute top-0 right-0 text-2xl font-semibold pt-3 px-4" @onclick="() => _addPlayerModalShowing = false">X</button>
+                    <div class="p-4 flex flex-col h-full">
+                        <span class="font-bold text-2xl">Add a player</span>
+                        <input value="@_addPlayerField" @oninput="UpdatePlayerSearch" class="bg-slate-800 text-xl p-2 my-2 w-full rounded-md" placeholder="Display name..."/>
+                        <div class="bg-slate-800 flex-1 rounded-lg overflow-scroll">
+                            @foreach (var user in _guildUserSearch)
+                            {
+                                <button class="relative w-full h-24 p-2 hover:bg-slate-600 inline-flex items-center disabled:bg-slate-500" disabled="@user.Selected" @onclick="() => SelectUser(user)">
+                                    <img src="@user.AvatarUrl" class="rounded-full w-20 h-20" alt="@user.DisplayName"/>
+                                    <span class="text-2xl w-full text-center">@user.DisplayName</span>
+                                </button>
+                            }
+                        </div>
+                        <button class="bg-green-600 rounded-lg w-full text-xl mt-2 h-10 disabled:bg-green-900" @onclick="AddSelectedUserToGame" disabled="@(SearchUserSelected is null)">Add</button>
                     </div>
-                    <button class="bg-green-600 rounded-lg w-full text-xl mt-2 h-10 disabled:bg-green-900" @onclick="AddSelectedUserToGame" disabled="@(SearchUserSelected is null)">Add</button>
                 </div>
-            </div>
+            }
+            else if (_endGameModalShowing)
+            {
+                <div class="bg-slate-700 rounded-lg relative w-10/12 sm:w-[512px] mx-auto my-auto">
+                    <div class="p-4 flex flex-col h-full">
+                        <span class="font-bold text-2xl">Are you sure you want to end this game?</span>
+                        <button class="bg-green-600 rounded-lg w-full text-xl mt-2 min-h-[2.5rem] disabled:bg-green-900" @onclick="DeleteGameKeep">Yes, and keep game channels</button>
+                        <button class="bg-red-500 rounded-lg w-full text-xl mt-2 min-h-[2.5rem] disabled:bg-red-900" @onclick="DeleteGame">Yes, and delete game channels (irreversible)</button>
+                        <button class="bg-indigo-700 rounded-lg w-full text-xl mt-2 min-h-[2.5rem] disabled:bg-indigo-900" @onclick="() => _endGameModalShowing = false">No, cancel</button>
+                    </div>
+                </div>
+            }
         </div>
     }
 }
@@ -90,8 +105,7 @@ else
     private bool NotFound { get; set; }
 
     private List<IGuildUser> _resolvedPlayers = new();
-    private bool _waitingForChannelAction;
-    private bool _addPlayerModalShowing;
+    private bool _waitingForChannelAction, _addPlayerModalShowing, _endGameModalShowing, _deleting;
     private string _addPlayerField = string.Empty;
     private readonly List<IGuildUser> _guildUserCache = new();
     private List<SearchedUser> _guildUserSearch = new();
@@ -116,6 +130,11 @@ else
     
     private async void GameUpdated()
     {
+        while (_deleting)
+        {
+            await Task.Delay(1000);
+        }
+        
         DoExtra();
         await InvokeAsync(StateHasChanged);
     }
@@ -203,6 +222,32 @@ else
         {
             _addPlayerModalShowing = false;
         }
+    }
+
+    private async Task DeleteGame()
+    {
+        _deleting = true;
+        var result = await ControlService.DeleteGame(Game, false);
+
+        if (result.Success)
+        {
+            Nav.NavigateTo("/dashboard");
+        }
+
+        _deleting = false;
+    }
+    
+    private async Task DeleteGameKeep()
+    {
+        _deleting = true;
+        var result = await ControlService.DeleteGame(Game, true);
+
+        if (result.Success)
+        {
+            Nav.NavigateTo("/dashboard");
+        }
+
+        _deleting = false;
     }
 
     public void Dispose()

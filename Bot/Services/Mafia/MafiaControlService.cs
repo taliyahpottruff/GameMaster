@@ -128,4 +128,67 @@ public class MafiaControlService
 
         return new ServiceResult<string>(true, "Successfully added player");
     }
+
+    public async Task<ServiceResult<string>> DeleteGame(MafiaGame game, bool keepGameChannels)
+    {
+        var guild = Client.GetGuild(game.Guild);
+
+        if (game.Channel > ulong.MinValue)
+        {
+            if (await Client.GetChannelAsync(game.Channel) is ITextChannel channel)
+            {
+                if (keepGameChannels)
+                {
+                    try
+                    {
+                        await channel.RemovePermissionOverwriteAsync(guild.EveryoneRole);
+                        foreach (var playerId in game.Players)
+                        {
+                            var player = guild.GetUser(playerId);
+                            await channel.RemovePermissionOverwriteAsync(player);
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine($"There may be permissions errors in {guild.Id}");
+                        Console.WriteLine(e.ToString());
+                    }
+                }
+                else
+                {
+                    try
+                    {
+                        await channel.DeleteAsync();
+                    }
+                    catch 
+                    {
+                        Console.WriteLine($"Can't delete channel in {guild.Id}");
+                    }
+                }
+				
+            }
+        }
+
+        foreach (var channelId in game.GameChannels)
+        {
+            if (await Client.GetChannelAsync(game.Channel) is SocketTextChannel channel)
+            {
+                if (keepGameChannels)
+                    await channel.RemovePermissionOverwriteAsync(guild.EveryoneRole);
+                else
+                    await channel.DeleteAsync();
+            }
+        }
+
+        var result = await Data.DeleteMafiaGame(game.Channel);
+
+        if (!result)
+        {
+            return new ServiceResult<string>(false, "There doesn't seem to be an active game here");
+        }
+
+        if (await Client.GetChannelAsync(game.ControlPanel) is SocketTextChannel controlPanel) 
+            await controlPanel.DeleteAsync();
+        return new ServiceResult<string>(true, "Game deleted");
+    }
 }

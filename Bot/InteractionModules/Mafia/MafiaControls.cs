@@ -64,68 +64,25 @@ public class MafiaControls : InteractionModuleBase
 		await DeferAsync();
 		
 		var game = _db.GetMafiaGame(Context.Channel.Id);
-		bool success = await _db.DeleteMafiaGame(Context.Channel.Id);
 
-		if (!success || game is null)
+		if (game is null)
 		{
-			Console.WriteLine($"{Context.Channel.Name}: Something went wrong. There doesn't seem to be an active mafia game using this channel.");
-            await ((SocketGuildChannel)Context.Channel).DeleteAsync();
+			/*Console.WriteLine($"{Context.Channel.Name}: Something went wrong. There doesn't seem to be an active mafia game using this channel.");
+            await ((SocketGuildChannel)Context.Channel).DeleteAsync();*/
+			await RespondAsync(
+				"Something went wrong. There doesn't seem to be an active mafia game using this channel.",
+				ephemeral: true);
             return;
 		}
 
-		await ModifyOriginalResponseAsync(x => x.Content = "Game removed from database... please wait.");
+		var message = await ReplyAsync("Game removed from database... please wait.");
 
-		var guild = _client.GetGuild(game.Guild);
+		var result = await Service.DeleteGame(game, option == "keep");
 
-		if (game.Channel > ulong.MinValue)
+		if (!result.Success)
 		{
-			if (await _client.GetChannelAsync(game.Channel) is ITextChannel channel)
-			{
-				if (option == "keep")
-				{
-					try
-					{
-						await channel.RemovePermissionOverwriteAsync(guild.EveryoneRole);
-						foreach (var playerId in game.Players)
-						{
-							var player = guild.GetUser(playerId);
-							await channel.RemovePermissionOverwriteAsync(player);
-						}
-					}
-					catch (Exception e)
-					{
-						Console.WriteLine($"There may be permissions errors in {guild.Id}");
-						Console.WriteLine(e.ToString());
-					}
-				}
-				else
-				{
-					try
-					{
-						await channel.DeleteAsync();
-					}
-					catch 
-					{
-						Console.WriteLine($"Can't delete channel in {guild.Id}");
-					}
-				}
-				
-			}
+			await message.ModifyAsync(x => x.Content = result.Payload);
 		}
-
-		foreach (var channelId in game.GameChannels)
-		{
-			if (await _client.GetChannelAsync(game.Channel) is SocketTextChannel channel)
-			{
-				if (option == "keep")
-					await channel.RemovePermissionOverwriteAsync(guild.EveryoneRole);
-                else
-                    await channel.DeleteAsync();
-            }
-		}
-
-		//await button.ModifyOriginalResponseAsync(x => x.Content= "Now deleting control panel...");
-		await ((SocketGuildChannel)Context.Channel).DeleteAsync();
 	}
 
 	[ComponentInteraction("createChannel")]
