@@ -1,6 +1,7 @@
 ﻿@page "/"
 @inject State State
 @inject NavigationManager Nav
+@inject IWebHostEnvironment Env
 @implements IDisposable
 
 @if (!State.IsLoggedIn)
@@ -9,7 +10,14 @@
         <div class="text-center">
             <h1 class="text-6xl font-bold mb-2">GameMaster</h1>
             <h3 class="text-xl mb-8">A discord bot for running interactive games in your server</h3>
-            <a href="https://discord.com/api/oauth2/authorize?client_id=713823987255476307&response_type=code&redirect_uri=https%3A%2F%2Flocalhost%3A5001%2Fauth&scope=guilds+identify+email" class="px-2 py-1 bg-indigo-700 rounded-sm hover:bg-indigo-500 inline-flex items-center">Login with Discord</a>
+            @if (Env.IsDevelopment())
+            {
+                <a href="https://discord.com/api/oauth2/authorize?client_id=713823987255476307&response_type=code&redirect_uri=https%3A%2F%2Flocalhost%3A5001%2Fauth&scope=guilds+identify+email" class="px-2 py-1 bg-indigo-700 rounded-sm hover:bg-indigo-500 inline-flex items-center">Login with Discord</a>
+            }
+            else
+            {
+                <a href="https://discord.com/api/oauth2/authorize?client_id=713823987255476307&response_type=code&redirect_uri=https%3A%2F%2Fdiscordgamemaster.com%2Fauth&scope=guilds+identify+email" class="px-2 py-1 bg-indigo-700 rounded-sm hover:bg-indigo-500 inline-flex items-center">Login with Discord</a>
+            }
         </div>
     </div>
 }
