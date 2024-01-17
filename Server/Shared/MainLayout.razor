@@ -1,0 +1,57 @@
+﻿@inherits LayoutComponentBase
+@inject State State
+@inject NavigationManager Navigation
+
+<PageTitle>GameMaster</PageTitle>
+
+<main>
+    @if (State.IsLoggedIn)
+    {
+        
+        <nav class="flex items-center justify-between flex-wrap bg-slate-950 p-2 mb-8">
+            <span class="font-semibold text-xl mr-6">GameMaster</span>
+            <!--<div class="block lg:hidden">
+                <button class="flex items-center px-3 py-2 border rounded text-teal-200 border-teal-400 hover:text-white hover:border-white">
+                    <svg class="fill-current h-3 w-3" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><title>Menu</title><path d="M0 3h20v2H0V3zm0 6h20v2H0V9zm0 6h20v2H0v-2z"/></svg>
+                </button>
+            </div>-->
+            <div class="flex-grow flex items-center w-auto">
+                <div class="text-sm flex-grow">
+                    <NavLink href="/dashboard" class="block p-2 inline-block mt-0 text-white hover:bg-gray-600 hover:rounded-md">Dashboard</NavLink>
+                </div>
+                <div class="flex float-right text-white items-center">
+                    <img src="@State.DiscordAvatar" aria-label="Discord avatar" class="inline rounded-full w-8 h-8 float-start pb-1"/>
+                    <span class="ml-2 mr-4 pb-1">@State.DiscordDisplayName</span>
+                    <button @onclick="Logout" class="bg-indigo-700 rounded-sm px-2 pb-1 hover:bg-indigo-500">Logout</button>
+                </div>
+            </div>
+        </nav>
+    }
+
+    <div class="lg:mx-32 mx-8">
+        @Body
+    </div>
+</main>
+
+@code
+{
+    protected override void OnInitialized()
+    {
+        State.OnStateChanged += StateChanged;
+    }
+
+    private void Logout()
+    {
+        Navigation.NavigateTo("/auth/logout", true);
+    }
+
+    public void Dispose()
+    {
+        State.OnStateChanged -= StateChanged;
+    }
+
+    private async void StateChanged()
+    {
+        await InvokeAsync(StateHasChanged);
+    }
+}

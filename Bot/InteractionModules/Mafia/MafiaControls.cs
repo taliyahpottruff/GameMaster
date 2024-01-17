@@ -1,20 +1,23 @@
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
-using System;
-using System.Xml.Linq;
+using GameMaster.Bot.Services.Mafia;
+using GameMaster.Shared;
+using GameMaster.Shared.Mafia;
 
-namespace GameMaster.Mafia;
+namespace GameMaster.Bot.InteractionModules.Mafia;
 
 public class MafiaControls : InteractionModuleBase
 {
 	private readonly DiscordSocketClient _client;
 	private readonly DataService _db;
+	private MafiaControlService Service { get; }
 
-	public MafiaControls(DiscordSocketClient client, DataService db)
+	public MafiaControls(DiscordSocketClient client, DataService db, MafiaControlService service)
 	{
 		_client = client;
 		_db = db;
+		Service = service;
 	}
 
 	private async Task UpdateControlPanelMessage(MafiaGame game)
@@ -60,106 +63,44 @@ public class MafiaControls : InteractionModuleBase
 	{
 		await DeferAsync();
 		
-		var game = await _db.GetMafiaGame(Context.Channel.Id);
-		bool success = await _db.DeleteMafiaGame(Context.Channel.Id);
+		var game = _db.GetMafiaGame(Context.Channel.Id);
 
-		if (!success || game is null)
+		if (game is null)
 		{
-			Console.WriteLine($"{Context.Channel.Name}: Something went wrong. There doesn't seem to be an active mafia game using this channel.");
-            await ((SocketGuildChannel)Context.Channel).DeleteAsync();
+			/*Console.WriteLine($"{Context.Channel.Name}: Something went wrong. There doesn't seem to be an active mafia game using this channel.");
+            await ((SocketGuildChannel)Context.Channel).DeleteAsync();*/
+			await RespondAsync(
+				"Something went wrong. There doesn't seem to be an active mafia game using this channel.",
+				ephemeral: true);
             return;
 		}
 
-		await ModifyOriginalResponseAsync(x => x.Content = "Game removed from database... please wait.");
+		var message = await ReplyAsync("Game removed from database... please wait.");
 
-		var guild = _client.GetGuild(game.Guild);
+		var result = await Service.DeleteGame(game, option == "keep");
 
-		if (game.Channel > ulong.MinValue)
+		if (!result.Success)
 		{
-			if (await _client.GetChannelAsync(game.Channel) is ITextChannel channel)
-			{
-				if (option == "keep")
-				{
-					try
-					{
-						await channel.RemovePermissionOverwriteAsync(guild.EveryoneRole);
-						foreach (var playerId in game.Players)
-						{
-							var player = guild.GetUser(playerId);
-							await channel.RemovePermissionOverwriteAsync(player);
-						}
-					}
-					catch (Exception e)
-					{
-						Console.WriteLine($"There may be permissions errors in {guild.Id}");
-						Console.WriteLine(e.ToString());
-					}
-				}
-				else
-				{
-					try
-					{
-						await channel.DeleteAsync();
-					}
-					catch 
-					{
-						Console.WriteLine($"Can't delete channel in {guild.Id}");
-					}
-				}
-				
-			}
+			await message.ModifyAsync(x => x.Content = result.Payload);
 		}
-
-		foreach (var channelId in game.GameChannels)
-		{
-			if (await _client.GetChannelAsync(game.Channel) is SocketTextChannel channel)
-			{
-				if (option == "keep")
-					await channel.RemovePermissionOverwriteAsync(guild.EveryoneRole);
-                else
-                    await channel.DeleteAsync();
-            }
-		}
-
-		//await button.ModifyOriginalResponseAsync(x => x.Content= "Now deleting control panel...");
-		await ((SocketGuildChannel)Context.Channel).DeleteAsync();
 	}
 
 	[ComponentInteraction("createChannel")]
 	private async Task CreateChannel()
 	{
-		await DeferAsync(true);
+		await DeferAsync();
 
-		var game = await _db.GetMafiaGame(Context.Channel.Id);
-		if (game is null) return;
+		var game = await Service.CreateDayChat((ITextChannel)Context.Channel);
 
-		if (game.Channel > ulong.MinValue)
+		if (game is null)
 		{
-			await ModifyOriginalResponseAsync(x => x.Content = "There's already a primary game channel for this game!");
+			await RespondAsync("You are not allowed to do this");
 			return;
 		}
-
-		var guild = Context.Guild;
-        var category = ((SocketGuild)guild).CategoryChannels.First(x => x.Channels.FirstOrDefault(x => x.Id == Context.Channel.Id) is not null).Id;
-        var gameChannel = await guild.CreateTextChannelAsync(game.SanitizedName, x =>
-        {
-            x.PermissionOverwrites = new List<Overwrite>()
-            {
-                new Overwrite(guild.EveryoneRole.Id, PermissionTarget.Role, new OverwritePermissions(viewChannel: PermValue.Deny, sendMessages: PermValue.Deny, addReactions: PermValue.Deny)),
-                new Overwrite(_client.CurrentUser.Id, PermissionTarget.User, new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow, addReactions: PermValue.Allow)),
-                new Overwrite(Context.User.Id, PermissionTarget.User, new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow, addReactions: PermValue.Allow)),
-            };
-            x.CategoryId = category;
-        });
-
-		game.Channel = gameChannel.Id;
-		await _db.SetMafiaGameChannel(game.ControlPanel, game.Channel);
-
-		game.ChatStatus = MafiaGame.GameChatStatus.Unviewable;
-		await _db.SetMafiaGameChatStatus(game.ControlPanel, game.ChatStatus);
 		
 		await UpdateControlPanelMessage(game);
-    }
+		await RespondAsync("Created");
+	}
 
 	[ComponentInteraction("addPlayer:*")]
 	private async Task AddPlayerButton(string playerIdString)
@@ -170,18 +111,17 @@ public class MafiaControls : InteractionModuleBase
 
 		await DeferAsync(true);
 
-		var game = await _db.GetMafiaGame(Context.Channel.Id);
+		var game = _db.GetMafiaGame(Context.Channel.Id);
 		if (game is null) return;
 
-		var success = await _db.AddPlayerToMafiaGame(Context.Channel.Id, playerId);
-		if (!success) return;
-        game.Players.Add(playerId);
-        var gameChannel = await Context.Guild.GetTextChannelAsync(game.Channel);
-		var guildUser = await Context.Guild.GetUserAsync(playerId);
-		if (game.Channel > ulong.MinValue)
-			await gameChannel.AddPermissionOverwriteAsync(guildUser, new OverwritePermissions(viewChannel: (game.ChatStatus != MafiaGame.GameChatStatus.Unviewable) ? PermValue.Allow : PermValue.Deny, sendMessages: (game.ChatStatus == MafiaGame.GameChatStatus.Open) ? PermValue.Allow : PermValue.Deny, addReactions: PermValue.Inherit));
+		var result = await Service.AddPlayerToGame(game, playerId);
 
-        // Update control panel message
+		if (!result.Success)
+		{
+			await RespondAsync(result.Payload);
+		}
+
+		// Update control panel message
         await UpdateControlPanelMessage(game);
 
         await DeleteOriginalResponseAsync();
@@ -196,7 +136,7 @@ public class MafiaControls : InteractionModuleBase
 
 		await DeferAsync(true);
 
-		var game = await _db.GetMafiaGame(Context.Channel.Id);
+		var game = _db.GetMafiaGame(Context.Channel.Id);
 		if (game is null) return;
 
 		var success = await _db.RemovePlayerFromMafiaGame(Context.Channel.Id, playerId);
@@ -223,26 +163,15 @@ public class MafiaControls : InteractionModuleBase
 	[ComponentInteraction("chat:*")]
 	private async Task SetChat(string status)
 	{
-		bool open = status == "open";
+		
 		await DeferAsync();
 
-		var game = await _db.GetMafiaGame(Context.Channel.Id);
-		if (game is null) return;
+		var result = await Service.SetDayChat((ITextChannel)Context.Channel, status);
 
-		if (game.Channel == ulong.MinValue) return;
-		var guild = _client.GetGuild(game.Guild);
-		var channel = (ITextChannel)await _client.GetChannelAsync(game.Channel);
-
-		await channel.AddPermissionOverwriteAsync(guild.EveryoneRole, new OverwritePermissions(viewChannel: PermValue.Inherit, sendMessages: PermValue.Deny, addReactions: PermValue.Deny));
-		foreach (var playerId in game.Players)
-		{
-			var user = await _client.GetUserAsync(playerId);
-			await channel.AddPermissionOverwriteAsync(user, new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: open ? PermValue.Allow : PermValue.Deny, addReactions: PermValue.Inherit));
-		}
-		game.ChatStatus = open ? MafiaGame.GameChatStatus.Open : MafiaGame.GameChatStatus.Closed;
-		await _db.SetMafiaGameChatStatus(game.ControlPanel, game.ChatStatus);
-
-		await UpdateControlPanelMessage(game);
+		if (result.Success)
+			await UpdateControlPanelMessage((MafiaGame)result.Payload);
+		else
+			await RespondAsync(result.Payload.ToString());
 	}
 	#endregion
 
@@ -253,7 +182,7 @@ public class MafiaControls : InteractionModuleBase
 	{
 		await DeferAsync();
 
-		var game = await _db.GetMafiaGame(Context.Channel.Id, false);
+		var game = _db.GetMafiaGame(Context.Channel.Id, false);
         if (game is null)
         {
 			await ModifyOriginalResponseAsync(x => x.Content = "You can only use this command in a game of mafia");
@@ -287,7 +216,7 @@ public class MafiaControls : InteractionModuleBase
 	{
 		await DeferAsync();
 
-		var game = await _db.GetMafiaGame(Context.Channel.Id, false);
+		var game = _db.GetMafiaGame(Context.Channel.Id, false);
 		if (game is null)
 		{
 			await ModifyOriginalResponseAsync(x => x.Content = "You can only use this command in a game of mafia");
