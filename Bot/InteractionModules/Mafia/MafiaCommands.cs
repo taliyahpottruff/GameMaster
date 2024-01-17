@@ -132,7 +132,10 @@ public class MafiaCommands : InteractionModuleBase
 			return;
 		}
 
-		var result = await Service.NewMafiaGame((ITextChannel)Context.Channel, Context.User, name, createChannel);
+		var category =
+			((SocketGuild)guild).CategoryChannels.First(x =>
+				x.Channels.FirstOrDefault(x => x.Id == Context.Channel.Id) is not null);
+		var result = await Service.NewMafiaGame(category, Context.User, name, createChannel);
 		
 		if (result.Success)
 			await ModifyOriginalResponseAsync(x => x.Content = $"`{name}` has been created. Go to your control panel at https://discord.com/channels/{guild.Id}/{result.Payload} to continue setup of the game.");

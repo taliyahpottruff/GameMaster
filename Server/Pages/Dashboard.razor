@@ -1,11 +1,32 @@
 ﻿@page "/dashboard"
 @using GameMaster.Shared
 @using GameMaster.Shared.Mafia
+@using GameMaster.Bot.Services.Mafia
 @inject State State
 @inject HttpClient Http
 @inject DataService Data
+@inject MafiaCommandService CommandService
+@inject NavigationManager Nav
 
-<h3 class="text-2xl font-bold mb-2">Dashboard</h3>
+<span class="text-2xl font-bold mb-2">Dashboard</span>
+<div class="my-2">
+    <a href="https://discord.com/api/oauth2/authorize?client_id=713823987255476307&permissions=17998329261168&scope=applications.commands%20bot" class="px-2 py-1 bg-indigo-700 rounded-sm hover:bg-indigo-500" target="_blank">Add bot to your server</a>
+</div>
+<div class="flex items-center">
+    <span class="text-xl font-semibold mb-2">Mafia Games</span>
+    <button class="bg-indigo-600 rounded-full font-semibold leading-tight flex items-center justify-center w-4 h-4 ml-2" @onclick="() => _showingNewMafiaGameModal = true">
+        <svg fill="#ffffff" id="Capa_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+             width="0.5rem" height="0.5rem" viewBox="0 0 45.402 45.402"
+             xml:space="preserve">
+            <g>
+                <path d="M41.267,18.557H26.832V4.134C26.832,1.851,24.99,0,22.707,0c-2.283,0-4.124,1.851-4.124,4.135v14.432H4.141
+                                                                                                  		c-2.283,0-4.139,1.851-4.138,4.135c-0.001,1.141,0.46,2.187,1.207,2.934c0.748,0.749,1.78,1.222,2.92,1.222h14.453V41.27
+                                                                                                  		c0,1.142,0.453,2.176,1.201,2.922c0.748,0.748,1.777,1.211,2.919,1.211c2.282,0,4.129-1.851,4.129-4.133V26.857h14.435
+                                                                                                  		c2.283,0,4.134-1.867,4.133-4.15C45.399,20.425,43.548,18.557,41.267,18.557z"/>
+            </g>
+        </svg>
+    </button>
+</div>
 @if (Ready)
 {
     <ul>
@@ -18,19 +39,78 @@
         }
     </ul>
 }
+else
+{
+    <i>Loading...</i>
+}
+
+@if (_showingNewMafiaGameModal)
+{
+    <div class="fixed top-0 left-0 right-0 bottom-0 flex items-center bg-gray-900/50">
+        <div class="bg-slate-700 rounded-lg relative w-10/12 lg:w-6/12 mx-auto my-auto">
+            <button class="absolute top-0 right-0 text-2xl font-semibold pt-3 px-4" @onclick="() => _showingNewMafiaGameModal = false">X</button>
+            <div class="p-4 flex flex-col h-full">
+                <EditForm Model="MafiaGameModel" OnSubmit="CreateNewMafiaGame">
+                    <span class="font-bold text-2xl">New Mafia Game</span>
+                    <InputText @bind-Value="MafiaGameModel.Name" class="bg-slate-800 text-xl p-2 my-2 w-full rounded-md" placeholder="Name..."/>
+                    <InputSelect TValue="ulong" @bind-Value="MafiaGameModel.Guild" class="bg-slate-800 text-xl p-2 my-2 w-full rounded-md" placeholder="Server...">
+                        @foreach (var server in _serverCategories)
+                        {
+                            <option value="@server.GuildId"><img src="@server.GuildIconUrl" alt="@server.GuildName" /> @server.GuildName</option>
+                        }
+                    </InputSelect>
+                    <InputSelect TValue="ulong" @bind-Value="MafiaGameModel.Channel" class="bg-slate-800 text-xl p-2 my-2 w-full rounded-md" placeholder="Server...">
+                        @if (MafiaGameModel.Guild > ulong.MinValue)
+                        {
+                            @foreach (var category in _serverCategories.First(x => x.GuildId == MafiaGameModel.Guild).Categories)
+                            {
+                                <option value="@category.Id">@category.Name</option>
+                            }
+                        }
+                    </InputSelect>
+                    <button type="submit" class="bg-green-600 rounded-lg w-full text-xl mt-2 h-10 disabled:bg-green-900" disabled="@(string.IsNullOrWhiteSpace(MafiaGameModel.Name) || MafiaGameModel.Guild == ulong.MinValue || MafiaGameModel.Channel == ulong.MinValue || _submittingNewMafiaGameRequest)">Create game</button>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+}
 
 @code {
     private bool Ready { get; set; } = false;
-    private List<MafiaGame> Games { get; set; } = new();
+    private List<MafiaGame> Games { get; set; } = [];
+    private NewMafiaGameModel MafiaGameModel { get; set; } = new();
+
+    private bool _showingNewMafiaGameModal;
+    private IEnumerable<ServerCategories> _serverCategories = [];
+    private bool _submittingNewMafiaGameRequest;
     
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         State.OnStateChanged += StateChanged;
 
+        _serverCategories = await CommandService.GetAvailableServerCategories(State.DiscordId);
         Games = Data.GetAllMafiaGamesManagedByUser(State.DiscordId);
         Ready = true;
     }
-    
+
+    private async Task CreateNewMafiaGame()
+    {
+        _submittingNewMafiaGameRequest = true;
+        var result = await CommandService.NewMafiaGame(MafiaGameModel.Guild, MafiaGameModel.Channel, State.DiscordId, MafiaGameModel.Name, true);
+
+        if (result.Success)
+        {
+            _showingNewMafiaGameModal = false;
+            MafiaGameModel = new();
+            var newGame = Data.GetMafiaGame(result.Payload, false);
+            Nav.NavigateTo($"/dashboard/mafia/{newGame?.Id}");
+        }
+        else
+        {
+            _submittingNewMafiaGameRequest = false;
+        }
+    }
+
     public void Dispose()
     {
         State.OnStateChanged -= StateChanged;
@@ -39,5 +119,12 @@
     private async void StateChanged()
     {
         await InvokeAsync(StateHasChanged);
+    }
+
+    public class NewMafiaGameModel
+    {
+        public ulong Guild { get; set; }
+        public ulong Channel { get; set; }
+        public string Name { get; set; } = string.Empty;
     }
 }

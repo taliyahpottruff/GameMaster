@@ -17,21 +17,20 @@ public class MafiaCommandService
         Client = client;
     }
 
-    public async Task<ServiceResult<ulong>> NewMafiaGame(ITextChannel channel, IUser gm, string name, bool createChannel = false)
+    public async Task<ServiceResult<ulong>> NewMafiaGame(ICategoryChannel category, IUser gm, string name, bool createChannel = false)
     {
         var sanitizedName = name.Sanitize().ToLower().Replace(" ", "-");
 
-        var guild = channel.Guild;
-		var category = ((SocketGuild)guild).CategoryChannels.First(x => x.Channels.FirstOrDefault(x => x.Id == channel.Id) is not null).Id;
+        var guild = category.Guild;
 		var controlPanelChannel = await guild.CreateTextChannelAsync($"{sanitizedName}-control", x =>
 		{
 			x.PermissionOverwrites = new List<Overwrite>()
 			{
-				new Overwrite(guild.EveryoneRole.Id, PermissionTarget.Role, new OverwritePermissions(viewChannel: PermValue.Deny)),
-				new Overwrite(Client.CurrentUser.Id, PermissionTarget.User, new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow)),
-				new Overwrite(gm.Id, PermissionTarget.User, new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow)),
+				new(guild.EveryoneRole.Id, PermissionTarget.Role, new OverwritePermissions(viewChannel: PermValue.Deny)),
+				new(Client.CurrentUser.Id, PermissionTarget.User, new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow)),
+				new(gm.Id, PermissionTarget.User, new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow)),
 			};
-			x.CategoryId = category;
+			x.CategoryId = category.Id;
 		});
 		
 		// Send base control panel message
@@ -65,17 +64,59 @@ public class MafiaCommandService
             {
                 x.PermissionOverwrites = new List<Overwrite>()
             {
-                new Overwrite(guild.EveryoneRole.Id, PermissionTarget.Role, new OverwritePermissions(viewChannel: PermValue.Deny, sendMessages: PermValue.Deny, addReactions: PermValue.Deny)),
-                new Overwrite(Client.CurrentUser.Id, PermissionTarget.User, new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow, addReactions: PermValue.Allow)),
-                new Overwrite(gm.Id, PermissionTarget.User, new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow, addReactions: PermValue.Allow)),
+                new(guild.EveryoneRole.Id, PermissionTarget.Role, new OverwritePermissions(viewChannel: PermValue.Deny, sendMessages: PermValue.Deny, addReactions: PermValue.Deny)),
+                new(Client.CurrentUser.Id, PermissionTarget.User, new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow, addReactions: PermValue.Allow)),
+                new(gm.Id, PermissionTarget.User, new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow, addReactions: PermValue.Allow)),
             };
-                x.CategoryId = category;
+                x.CategoryId = category.Id;
             });
 			newGame.Channel = gameChannel.Id;
-        }
+			newGame.ChatStatus = MafiaGame.GameChatStatus.Unviewable;
+		}
 
 		await Data.CreateNewMafiaGame(newGame);
 
 		return new ServiceResult<ulong>(true, controlPanelChannel.Id);
+    }
+    
+    public async Task<ServiceResult<ulong>> NewMafiaGame(ulong guildId, ulong categoryId, ulong gmId, string name, bool createChannel = false)
+    {
+	    var guild = Client.GetGuild(guildId);
+	    var category = guild.CategoryChannels.First(x => x.Id == categoryId);
+	    var gm = await Client.GetUserAsync(gmId);
+
+	    if (gm is null)
+		    return new ServiceResult<ulong>(false, ulong.MinValue);
+
+	    return await NewMafiaGame((ICategoryChannel)category, gm, name, createChannel);
+    }
+
+    public async Task<List<ServerCategories>> GetAvailableServerCategories(ulong userId)
+    {
+	    var guilds = Client.Guilds;
+
+	    if (guilds is null)
+		    return [];
+
+	    List<ServerCategories> list = [];
+	    foreach (var guild in guilds)
+	    {
+		    var users = await guild.GetUsersAsync().FlattenAsync();
+		    
+		    // This can't be efficient
+		    if (users.All(user => user.Id != userId))
+			    continue;
+		    
+		    ServerCategories obj = new(guild.Id, guild.Name, guild.IconUrl);
+
+		    foreach (var category in guild.CategoryChannels)
+		    {
+			    obj.Categories.Add(new ServerCategories.Category(category.Id, category.Name));
+		    }
+		    
+		    list.Add(obj);
+	    }
+
+	    return list;
     }
 }

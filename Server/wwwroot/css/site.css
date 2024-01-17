@@ -650,6 +650,10 @@ video {
   height: 0.75rem;
 }
 
+.h-4 {
+  height: 1rem;
+}
+
 .h-4\/6 {
   height: 66.666667%;
 }
@@ -666,10 +670,6 @@ video {
   height: 100vh;
 }
 
-.h-2\/6 {
-  height: 33.333333%;
-}
-
 .min-h-\[2\.5rem\] {
   min-height: 2.5rem;
 }
@@ -684,6 +684,10 @@ video {
 
 .w-3 {
   width: 0.75rem;
+}
+
+.w-4 {
+  width: 1rem;
 }
 
 .w-8 {
@@ -768,6 +772,11 @@ video {
   background-color: rgb(22 163 74 / var(--tw-bg-opacity));
 }
 
+.bg-indigo-600 {
+  --tw-bg-opacity: 1;
+  background-color: rgb(79 70 229 / var(--tw-bg-opacity));
+}
+
 .bg-indigo-700 {
   --tw-bg-opacity: 1;
   background-color: rgb(67 56 202 / var(--tw-bg-opacity));
@@ -847,14 +856,6 @@ video {
   text-align: center;
 }
 
-.align-top {
-  vertical-align: top;
-}
-
-.align-middle {
-  vertical-align: middle;
-}
-
 .text-2xl {
   font-size: 1.5rem;
   line-height: 2rem;
@@ -887,8 +888,8 @@ video {
   font-weight: 600;
 }
 
-.tracking-tight {
-  letter-spacing: -0.025em;
+.leading-tight {
+  line-height: 1.25;
 }
 
 .text-blue-400 {
@@ -930,14 +931,14 @@ body
   background-color: rgb(99 102 241 / var(--tw-bg-opacity));
 }
 
-.hover\:bg-slate-600:hover {
-  --tw-bg-opacity: 1;
-  background-color: rgb(71 85 105 / var(--tw-bg-opacity));
-}
-
 .hover\:bg-red-400:hover {
   --tw-bg-opacity: 1;
   background-color: rgb(248 113 113 / var(--tw-bg-opacity));
+}
+
+.hover\:bg-slate-600:hover {
+  --tw-bg-opacity: 1;
+  background-color: rgb(71 85 105 / var(--tw-bg-opacity));
 }
 
 .hover\:text-white:hover {
@@ -958,11 +959,6 @@ body
   background-color: rgb(20 83 45 / var(--tw-bg-opacity));
 }
 
-.disabled\:bg-slate-500:disabled {
-  --tw-bg-opacity: 1;
-  background-color: rgb(100 116 139 / var(--tw-bg-opacity));
-}
-
 .disabled\:bg-indigo-900:disabled {
   --tw-bg-opacity: 1;
   background-color: rgb(49 46 129 / var(--tw-bg-opacity));
@@ -973,17 +969,14 @@ body
   background-color: rgb(127 29 29 / var(--tw-bg-opacity));
 }
 
+.disabled\:bg-slate-500:disabled {
+  --tw-bg-opacity: 1;
+  background-color: rgb(100 116 139 / var(--tw-bg-opacity));
+}
+
 @media (min-width: 640px) {
   .sm\:w-96 {
     width: 24rem;
-  }
-
-  .sm\:w-\[256px\] {
-    width: 256px;
-  }
-
-  .sm\:w-\[1028px\] {
-    width: 1028px;
   }
 
   .sm\:w-\[512px\] {
@@ -999,5 +992,9 @@ body
 
   .lg\:hidden {
     display: none;
+  }
+
+  .lg\:w-6\/12 {
+    width: 50%;
   }
 }
