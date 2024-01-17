@@ -1,19 +1,24 @@
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
-using GameMaster.Extensions;
+using GameMaster.Bot.Extensions;
+using GameMaster.Bot.Services.Mafia;
+using GameMaster.Shared;
+using GameMaster.Shared.Mafia;
 
-namespace GameMaster.Mafia;
+namespace GameMaster.Bot.InteractionModules.Mafia;
 
 public class MafiaCommands : InteractionModuleBase
 {
 	private readonly DiscordSocketClient _client;
 	private readonly DataService _db;
+	private MafiaCommandService Service { get; }
 	
-	public MafiaCommands(DiscordSocketClient client, DataService db)
+	public MafiaCommands(DiscordSocketClient client, DataService db, MafiaCommandService service)
 	{
 		_client = client;
 		_db = db;
+		Service = service;
 	}
 
 	public static async Task HandleMessages(DiscordSocketClient client, DataService db, SocketMessage ctx)
@@ -22,7 +27,7 @@ public class MafiaCommands : InteractionModuleBase
 		var content = msg.CleanContent;
 		if (content.ToLower().StartsWith("lynch"))
 		{
-			var mafiaGame = await db.GetMafiaGame(msg.Channel.Id);
+			var mafiaGame = db.GetMafiaGame(msg.Channel.Id);
 			if (mafiaGame is null)
 				return;
 
@@ -86,7 +91,8 @@ public class MafiaCommands : InteractionModuleBase
 			}
 			
 			// Update the DB
-			await db.UpdateMafiaVotes(mafiaGame);
+			await db.UpdateMafiaGame(mafiaGame);
+			mafiaGame.Updated?.Invoke();
 			
 			// Inform the players of the new count
 			string tally = await FormatTally(client, mafiaGame);
@@ -94,7 +100,7 @@ public class MafiaCommands : InteractionModuleBase
 		}
 		else if (content.ToLower().StartsWith("unlynch"))
 		{
-			var mafiaGame = await db.GetMafiaGame(msg.Channel.Id);
+			var mafiaGame = db.GetMafiaGame(msg.Channel.Id);
 			if (mafiaGame is null)
 				return;
 
@@ -106,7 +112,8 @@ public class MafiaCommands : InteractionModuleBase
 				return;
 
 			mafiaGame.Votes.Remove(existingVote);
-			await db.UpdateMafiaVotes(mafiaGame);
+			await db.UpdateMafiaGame(mafiaGame);
+			mafiaGame.Updated?.Invoke();
 			string tally = await FormatTally(client, mafiaGame);
 			await msg.Channel.SendMessageAsync(tally);
 		}
@@ -118,64 +125,20 @@ public class MafiaCommands : InteractionModuleBase
 	{
 		await DeferAsync(true);
 		
-		var sanitizedName = name.Sanitize().ToLower().Replace(" ", "-");
-
 		var guild = Context.Guild;
-		if (guild is null) return;
-		var category = ((SocketGuild)guild).CategoryChannels.First(x => x.Channels.FirstOrDefault(x => x.Id == Context.Channel.Id) is not null).Id;
-		var controlPanelChannel = await guild.CreateTextChannelAsync($"{sanitizedName}-control", x =>
+		if (guild is null)
 		{
-			x.PermissionOverwrites = new List<Overwrite>()
-			{
-				new Overwrite(guild.EveryoneRole.Id, PermissionTarget.Role, new OverwritePermissions(viewChannel: PermValue.Deny)),
-				new Overwrite(_client.CurrentUser.Id, PermissionTarget.User, new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow)),
-				new Overwrite(Context.User.Id, PermissionTarget.User, new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow)),
-			};
-			x.CategoryId = category;
-		});
+			await ModifyOriginalResponseAsync(x => x.Content = "This command can only be run in a server");
+			return;
+		}
+
+		var category =
+			((SocketGuild)guild).CategoryChannels.First(x =>
+				x.Channels.FirstOrDefault(x => x.Id == Context.Channel.Id) is not null);
+		var result = await Service.NewMafiaGame(category, Context.User, name, createChannel);
 		
-		// Send base control panel message
-		var controlPanelMessage = await controlPanelChannel.SendMessageAsync(embed: new EmbedBuilder()
-			.WithTitle(name)
-			.AddField(new EmbedFieldBuilder().WithName("Players").WithIsInline(true).WithValue("*None*"))
-			.AddField(new EmbedFieldBuilder().WithName("Game Chat Open").WithIsInline(true).WithValue("Not created"))
-			.AddField(new EmbedFieldBuilder().WithName("Voting").WithIsInline(true).WithValue("Closed"))
-			.Build()
-		, components: new ComponentBuilder()
-			.AddRow(new ActionRowBuilder()
-				.WithButton("Create day chat", "createChannel")
-				.WithButton("Open game chat", "chat:open")
-				.WithButton("Close game chat", "chat:close")
-				.WithButton("End Game", "endGame", ButtonStyle.Danger)
-			).Build()
-		);
-
-		MafiaGame newGame = new() { 
-			GM = Context.User.Id,
-			Guild = Context.Guild.Id,
-			ControlPanel = controlPanelChannel.Id,
-			ControlPanelMessage = controlPanelMessage.Id,
-			Name = name,
-			SanitizedName = sanitizedName,
-		};
-
-		if (createChannel)
-		{
-            var gameChannel = await guild.CreateTextChannelAsync(sanitizedName, x =>
-            {
-                x.PermissionOverwrites = new List<Overwrite>()
-            {
-                new Overwrite(guild.EveryoneRole.Id, PermissionTarget.Role, new OverwritePermissions(viewChannel: PermValue.Deny, sendMessages: PermValue.Deny, addReactions: PermValue.Deny)),
-                new Overwrite(_client.CurrentUser.Id, PermissionTarget.User, new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow, addReactions: PermValue.Allow)),
-                new Overwrite(Context.User.Id, PermissionTarget.User, new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow, addReactions: PermValue.Allow)),
-            };
-                x.CategoryId = category;
-            });
-			newGame.Channel = gameChannel.Id;
-        }
-
-		await _db.CreateNewMafiaGame(newGame);
-		await ModifyOriginalResponseAsync(x => x.Content = $"`{name}` has been created. Go to your control panel at https://discord.com/channels/{guild.Id}/{controlPanelChannel.Id} to continue setup of the game.");
+		if (result.Success)
+			await ModifyOriginalResponseAsync(x => x.Content = $"`{name}` has been created. Go to your control panel at https://discord.com/channels/{guild.Id}/{result.Payload} to continue setup of the game.");
 	}
 
 	[SlashCommand("startvote", "Start a new vote in this channel")]
@@ -208,7 +171,7 @@ public class MafiaCommands : InteractionModuleBase
 	{
 		await DeferAsync(true);
 
-		var game = await _db.GetMafiaGame(Context.Channel.Id);
+		var game = _db.GetMafiaGame(Context.Channel.Id);
 
 		if (game is null)
 		{
@@ -239,7 +202,7 @@ public class MafiaCommands : InteractionModuleBase
 	{
 		await DeferAsync(true);
 
-		var game = await _db.GetMafiaGame(Context.Channel.Id);
+		var game = _db.GetMafiaGame(Context.Channel.Id);
 
 		if (game is null)
 		{
@@ -254,7 +217,7 @@ public class MafiaCommands : InteractionModuleBase
 		}
 		
 		game.Votes.Clear();
-		await _db.UpdateMafiaVotes(game);
+		await _db.UpdateMafiaGame(game);
 		await ModifyOriginalResponseAsync(x => x.Content = "The count has been reset");
 	}
 
@@ -263,7 +226,7 @@ public class MafiaCommands : InteractionModuleBase
 	{
 		await DeferAsync();
 
-		var game = await _db.GetMafiaGame(Context.Channel.Id);
+		var game = _db.GetMafiaGame(Context.Channel.Id);
 
 		if (game is null)
 		{

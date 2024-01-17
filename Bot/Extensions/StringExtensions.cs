@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace GameMaster.Extensions;
+namespace GameMaster.Bot.Extensions;
 
 public static class StringExtensions
 {

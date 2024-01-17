@@ -1,0 +1,61 @@
+﻿@using System.Net.Http.Headers
+@using MongoDB.Driver.Core.Servers
+@using Newtonsoft.Json.Linq
+@inject HttpClient Http
+@inject State State
+@inject NavigationManager Nav
+
+@if (Ready)
+{
+    <CascadingValue Name="AccessToken" Value="AccessToken">
+        <CascadingAuthenticationState>
+            <Router AppAssembly="@typeof(App).Assembly" OnNavigateAsync="OnNav">
+                <Found Context="routeData">
+                    <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)"/>
+                    <FocusOnNavigate RouteData="@routeData" Selector="h1"/>
+                </Found>
+                <NotFound>
+                    <PageTitle>Not found</PageTitle>
+                    <LayoutView Layout="@typeof(MainLayout)">
+                        <p role="alert">Hmm, couldn't seem to find what you're looking for...</p>
+                    </LayoutView>
+                </NotFound>
+            </Router>
+        </CascadingAuthenticationState>
+    </CascadingValue>
+}
+
+@code
+{
+    [Parameter]
+    public string AccessToken { get; set; } = String.Empty;
+
+    private bool Ready { get; set; } = false;
+
+    
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", AccessToken);
+            var result = await Http.GetStringAsync("https://discord.com/api/users/@me");
+            var userInfo = JObject.Parse(result);
+            State.DiscordId = (ulong)userInfo["id"];
+            State.DiscordUsername = (string)userInfo["username"];
+            State.DiscordAvatar = $"https://cdn.discordapp.com/avatars/{State.DiscordId}/{(string)userInfo["avatar"]}.png";
+            State.DiscordDisplayName = (string)userInfo["global_name"];
+        }
+        catch (HttpRequestException e)
+        {
+            State.DiscordId = ulong.MinValue;
+        }
+
+        Ready = true;
+    }
+
+    private void OnNav(NavigationContext ctx)
+    {
+        if (!State.IsLoggedIn && ctx.Path.StartsWith("dashboard") && Nav is not null)
+            Nav.NavigateTo("/");
+    }
+}

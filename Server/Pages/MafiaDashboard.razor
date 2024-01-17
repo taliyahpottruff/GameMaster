@@ -1,0 +1,265 @@
+﻿@page "/dashboard/mafia/{id}"
+@using GameMaster.Shared.Mafia
+@using GameMaster.Shared
+@using GameMaster.Bot.Services.Mafia
+@using Discord
+@implements IDisposable
+@inject DataService Data
+@inject MafiaControlService ControlService
+@inject NavigationManager Nav
+
+@if (Ready)
+{
+    <button class="px-2 py-1 bg-red-500 rounded-sm hover:bg-red-400 float-right inline-flex items-center font-semibold" @onclick="() => _endGameModalShowing = true">End Game</button>
+    <h1 class="text-2xl font-bold mb-2">@Game.Name</h1>
+    <div class="mb-2">
+        
+        <h3 class="text-xl font-bold">Players <button class="text-sm font-normal bg-green-600 px-1 rounded-sm ml-1" @onclick="() => _addPlayerModalShowing = true">Add</button></h3>
+        
+        <ul>
+            @if (_resolvedPlayers.Count > 0)
+            {
+                @foreach (var player in _resolvedPlayers)
+                {
+                    <li>@player.DisplayName</li>
+                }
+            }
+            else
+            {
+                <p><i>None yet...</i></p>
+            }
+        </ul>
+    </div>
+    <div class="mb-2">
+        <h3 class="text-xl font-bold">Day Chat Status</h3>
+        <p class="mb-1">@Game.ChatStatus</p>
+        @if (Game.ChatStatus == MafiaGame.GameChatStatus.NotCreated)
+        {
+            <button @onclick="CreateDayChat" disabled="@_waitingForChannelAction" class="px-2 py-1 bg-indigo-700 rounded-sm hover:bg-indigo-500 inline-flex items-center">Create Day Chat</button>
+        }
+        else
+        {
+            if (Game.ChatStatus != MafiaGame.GameChatStatus.Open)
+            {
+                <button @onclick="OpenDayChat" disabled="@_waitingForChannelAction" class="px-2 py-1 bg-indigo-700 rounded-sm hover:bg-indigo-500 inline-flex items-center mr-2">Open Day Chat</button>
+            }
+            if (Game.ChatStatus != MafiaGame.GameChatStatus.Closed)
+            {
+                <button @onclick="CloseDayChat" disabled="@_waitingForChannelAction" class="px-2 py-1 bg-indigo-700 rounded-sm hover:bg-indigo-500 inline-flex items-center mr-2">Close Day Chat</button>
+            }
+        }
+    </div>
+    
+    @if (_addPlayerModalShowing || _endGameModalShowing)
+    {
+        <div class="fixed top-0 left-0 right-0 bottom-0 flex items-center bg-gray-900/50">
+            @if (_addPlayerModalShowing)
+            {
+                <div class="bg-slate-700 rounded-lg relative w-10/12 h-4/6 sm:w-96 mx-auto my-auto">
+                    <button class="absolute top-0 right-0 text-2xl font-semibold pt-3 px-4" @onclick="() => _addPlayerModalShowing = false">X</button>
+                    <div class="p-4 flex flex-col h-full">
+                        <span class="font-bold text-2xl">Add a player</span>
+                        <input value="@_addPlayerField" @oninput="UpdatePlayerSearch" class="bg-slate-800 text-xl p-2 my-2 w-full rounded-md" placeholder="Display name..."/>
+                        <div class="bg-slate-800 flex-1 rounded-lg overflow-scroll">
+                            @foreach (var user in _guildUserSearch)
+                            {
+                                <button class="relative w-full h-24 p-2 hover:bg-slate-600 inline-flex items-center disabled:bg-slate-500" disabled="@user.Selected" @onclick="() => SelectUser(user)">
+                                    <img src="@user.AvatarUrl" class="rounded-full w-20 h-20" alt="@user.DisplayName"/>
+                                    <span class="text-2xl w-full text-center">@user.DisplayName</span>
+                                </button>
+                            }
+                        </div>
+                        <button class="bg-green-600 rounded-lg w-full text-xl mt-2 h-10 disabled:bg-green-900" @onclick="AddSelectedUserToGame" disabled="@(SearchUserSelected is null)">Add</button>
+                    </div>
+                </div>
+            }
+            else if (_endGameModalShowing)
+            {
+                <div class="bg-slate-700 rounded-lg relative w-10/12 sm:w-[512px] mx-auto my-auto">
+                    <div class="p-4 flex flex-col h-full">
+                        <span class="font-bold text-2xl">Are you sure you want to end this game?</span>
+                        <button class="bg-green-600 rounded-lg w-full text-xl mt-2 min-h-[2.5rem] disabled:bg-green-900" @onclick="DeleteGameKeep">Yes, and keep game channels</button>
+                        <button class="bg-red-500 rounded-lg w-full text-xl mt-2 min-h-[2.5rem] disabled:bg-red-900" @onclick="DeleteGame">Yes, and delete game channels (irreversible)</button>
+                        <button class="bg-indigo-700 rounded-lg w-full text-xl mt-2 min-h-[2.5rem] disabled:bg-indigo-900" @onclick="() => _endGameModalShowing = false">No, cancel</button>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+}
+else if (NotFound)
+{
+    <p>That mafia game doesn't exist.</p>
+}
+else
+{
+    <p>Loading details... Please wait.</p>
+}
+
+@code {
+    [Parameter]
+    public string Id { get; set; } = string.Empty;
+
+    private MafiaGame Game { get; set; } = new();
+    private bool Ready { get; set; }
+    private bool NotFound { get; set; }
+
+    private List<IGuildUser> _resolvedPlayers = new();
+    private bool _waitingForChannelAction, _addPlayerModalShowing, _endGameModalShowing, _deleting;
+    private string _addPlayerField = string.Empty;
+    private readonly List<IGuildUser> _guildUserCache = new();
+    private List<SearchedUser> _guildUserSearch = new();
+    private SearchedUser? SearchUserSelected => _guildUserSearch.Find(x => x.Selected);
+    
+    protected override async Task OnInitializedAsync()
+    {
+        RefreshGame();
+        DoExtra();
+
+        _guildUserCache.Clear();
+        _guildUserCache.AddRange(await ControlService.GetAllGuildUsers(Game));
+        
+        Game.Updated += GameUpdated;
+    }
+
+    private void DoExtra()
+    {
+        _resolvedPlayers.Clear();
+        _resolvedPlayers = ControlService.GetResolvedPlayerList(Game.Id);
+    }
+    
+    private async void GameUpdated()
+    {
+        while (_deleting)
+        {
+            await Task.Delay(1000);
+        }
+        
+        DoExtra();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void RefreshGame()
+    {
+        var temp = Data.GetMafiaGame(Id);
+
+        if (temp is null)
+        {
+            NotFound = true;
+            return;
+        }
+
+        Game = temp;
+        Ready = true;
+    }
+
+    private async Task CreateDayChat()
+    {
+        _waitingForChannelAction = true;
+        await ControlService.CreateDayChat(Game.ControlPanel);
+        RefreshGame();
+        _waitingForChannelAction = false;
+    }
+
+    private async Task OpenDayChat()
+    {
+        _waitingForChannelAction = true;
+        await ControlService.SetDayChat(Game.ControlPanel, "open");
+        _waitingForChannelAction = false;
+    }
+    
+    private async Task CloseDayChat()
+    {
+        _waitingForChannelAction = true;
+        await ControlService.SetDayChat(Game.ControlPanel, "closed");
+        _waitingForChannelAction = false;
+    }
+
+    private void UpdatePlayerSearch(ChangeEventArgs e)
+    {
+        _addPlayerField = e.Value?.ToString() ?? string.Empty;
+        var selected = _guildUserSearch.Find(x => x.Selected);
+        _guildUserSearch.Clear();
+
+        if (!string.IsNullOrWhiteSpace(_addPlayerField))
+        {
+            var query = _addPlayerField.Split(" ");
+            foreach (var user in _guildUserCache.Where(user => query.Any(part => user.DisplayName.ToLower().Contains(part.ToLower()))))
+            {
+                if (selected is not null)
+                {
+                    if (selected.Id == user.Id)
+                    {
+                        _guildUserSearch.Add(selected);
+                        continue;
+                    }
+                }
+                
+                var avatarUrl = user.GetDisplayAvatarUrl(ImageFormat.WebP);
+                _guildUserSearch.Add(new SearchedUser(user.Id, user.DisplayName, avatarUrl));
+            }
+        }
+        
+        StateHasChanged();
+    }
+
+    private void SelectUser(SearchedUser user)
+    {
+        foreach (var searched in _guildUserSearch)
+        {
+            searched.Selected = searched == user;
+        }
+    }
+
+    private async Task AddSelectedUserToGame()
+    {
+        if (SearchUserSelected is null)
+            return;
+
+        var result = await ControlService.AddPlayerToGame(Game, SearchUserSelected.Id);
+
+        if (result.Success)
+        {
+            _addPlayerModalShowing = false;
+        }
+    }
+
+    private async Task DeleteGame()
+    {
+        _deleting = true;
+        var result = await ControlService.DeleteGame(Game, false);
+
+        if (result.Success)
+        {
+            Nav.NavigateTo("/dashboard");
+        }
+
+        _deleting = false;
+    }
+    
+    private async Task DeleteGameKeep()
+    {
+        _deleting = true;
+        var result = await ControlService.DeleteGame(Game, true);
+
+        if (result.Success)
+        {
+            Nav.NavigateTo("/dashboard");
+        }
+
+        _deleting = false;
+    }
+
+    public void Dispose()
+    {
+        Game.Updated -= GameUpdated;
+    }
+
+    public class SearchedUser(ulong id, string displayName, string avatarUrl)
+    {
+        public ulong Id { get; } = id;
+        public string DisplayName { get; } = displayName;
+        public string AvatarUrl { get; } = avatarUrl;
+        public bool Selected { get; set; }
+    }
+}
